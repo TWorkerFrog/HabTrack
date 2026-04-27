@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@color/white">
+
+    <!-- Дата -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Сегодня"
+        android:textSize="13sp"
+        android:fontFamily="@font/montserrat"
+        android:textColor="@color/text_hint"/>
+
+    <!-- Прогресс-бар -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="20dp">
+
+        <ProgressBar
+            android:id="@+id/progress_bar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="8dp"
+            android:progressTint="@color/orange_primary"
+            android:max="100"/>
+
+        <TextView
+            android:id="@+id/tv_progress_percent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0%"
+            android:textSize="13sp"
+            android:fontFamily="@font/montserrat_bold"
+            android:textColor="@color/orange_primary"
+            android:layout_marginStart="12dp"/>
+    </LinearLayout>
+
+    <!-- Кнопка "Отметить всё" - красивая -->
+    <Button
+        android:id="@+id/btn_check_all"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Отметить все привычки"
+        android:textSize="14sp"
+        android:fontFamily="@font/montserrat_bold"
+        android:backgroundTint="@color/orange_primary"
+        android:textColor="@color/white"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- Список привычек -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_habits"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:nestedScrollingEnabled="false"/>
+
+</LinearLayout>
