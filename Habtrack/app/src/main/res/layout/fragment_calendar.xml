@@ -16,7 +16,6 @@
         android:textColor="@color/text_primary"
         android:layout_marginBottom="16dp"/>
 
-    <!-- Заголовок с месяцем и кнопками -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -54,37 +53,33 @@
     </LinearLayout>
 
     <!-- Дни недели -->
-    <GridLayout
-        android:id="@+id/grid_weekdays"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_weekdays"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:columnCount="7"
-        android:rowCount="1"
+        android:nestedScrollingEnabled="false"
         android:layout_marginBottom="8dp"/>
 
-    <!-- Сетка календаря -->
+    <!-- Сетка календаря (НЕ СКРОЛЛИТСЯ) -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_calendar"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"/>
-
-    <!-- Карточка с информацией о выбранном дне -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/card_day_info"
-        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="2dp"
-        app:cardBackgroundColor="@color/white"
+        android:nestedScrollingEnabled="false"/>
+
+    <!-- Скроллируемая нижняя плашка -->
+    <ScrollView
+        android:id="@+id/sv_day_details"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:layout_marginTop="16dp"
         android:visibility="gone">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+            android:orientation="vertical">
 
             <TextView
                 android:id="@+id/tv_selected_date"
@@ -100,7 +95,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="12dp">
+                android:layout_marginBottom="16dp">
 
                 <ProgressBar
                     android:id="@+id/calendar_progress_bar"
@@ -123,46 +118,22 @@
 
             </LinearLayout>
 
-            <!-- Кнопка "Подробнее" -->
-            <LinearLayout
-                android:id="@+id/btn_expand"
-                android:layout_width="match_parent"
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingVertical="8dp"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true">
+                android:text="Что делал сегодня:"
+                android:textSize="13sp"
+                android:fontFamily="@font/montserrat"
+                android:textColor="@color/text_secondary"
+                android:layout_marginBottom="8dp"/>
 
-                <TextView
-                    android:id="@+id/tv_expand_hint"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:text="▶ Подробнее"
-                    android:textSize="13sp"
-                    android:fontFamily="@font/montserrat"
-                    android:textColor="@color/orange_primary"/>
-
-                <ImageView
-                    android:id="@+id/iv_expand_arrow"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:src="@drawable/ic_chevron_down"
-                    android:alpha="0.6"/>
-
-            </LinearLayout>
-
-            <!-- Список привычек (скрыт по умолчанию) -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rv_day_habits"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:nestedScrollingEnabled="false"
-                android:visibility="gone"
-                android:layout_marginTop="8dp"/>
+                android:nestedScrollingEnabled="false"/>
 
         </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+    </ScrollView>
 
 </LinearLayout>
