@@ -164,14 +164,8 @@ public class HabitsFragment extends Fragment {
 
         etName.setText(habit.getTitle());
 
-        List<String> categoriesList = new ArrayList<>();
-        categoriesList.add("Без категории");
-        categoriesList.add("Здоровье");
-        categoriesList.add("Спорт");
-        categoriesList.add("Развитие");
-        categoriesList.add("Работа");
-        categoriesList.add("Творчество");
-        categoriesList.add("Дом");
+        // Получаем категории из БД
+        List<String> categoriesList = db.getUserCategories();
 
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(
                 getContext(),
@@ -353,5 +347,9 @@ public class HabitsFragment extends Fragment {
                 btnMenu = itemView.findViewById(R.id.btn_menu);
             }
         }
+    }
+    public void refreshCategories() {
+        // Если в фрагменте есть спиннер с категориями — обновляем
+        // Пока просто заглушка
     }
 }

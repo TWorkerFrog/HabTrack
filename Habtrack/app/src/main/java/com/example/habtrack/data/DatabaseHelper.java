@@ -88,14 +88,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 COL_LOG_TIMESTAMP + " INTEGER NOT NULL)";
         db.execSQL(createLogs);
 
-        // ========== ГЛАВНОЕ: Таблица категорий ==========
+        // аблица категорий
         String createCategories = "CREATE TABLE categories (" +
                 "category_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "name TEXT NOT NULL, " +
                 "user_id INTEGER, " +
                 "FOREIGN KEY(user_id) REFERENCES users(user_id))";
         db.execSQL(createCategories);
-        // ================================================
 
         // Добавляем тестового пользователя
         addTestUser(db);
@@ -224,7 +223,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return id;
     }
 
-    // ============= ПРИВЫЧКИ =============
+    // ПРИВЫЧКИ
     public List<Habit> getHabits() {
         List<Habit> habits = new ArrayList<>();
         int userId = getCurrentUserId();
@@ -268,7 +267,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         addLog("Удалена привычка ID: " + habitId);
     }
 
-    // ============= ВЫПОЛНЕНИЯ =============
+    //  ВЫПОЛНЕНИЯ
     public boolean isCompleted(int habitId, String date) {
         SQLiteDatabase db = getReadableDatabase();
         Cursor cursor = db.query(TABLE_COMPLETIONS,
@@ -387,5 +386,39 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put("user_id", userId);
         db.insert("categories", null, values);
         addLog("Добавлена категория: " + categoryName);
+    }
+
+    public void deleteCategory(String categoryName) {
+        int userId = getCurrentUserId();
+        SQLiteDatabase db = getWritableDatabase();
+
+        // Удаляем категорию
+        db.delete("categories", "name = ? AND user_id = ?", new String[]{categoryName, String.valueOf(userId)});
+
+        // Обновляем привычки: убираем у них эту категорию (ставим пустую строку)
+        ContentValues values = new ContentValues();
+        values.put(COL_HABIT_CATEGORY, "");
+        db.update(TABLE_HABITS, values, COL_HABIT_CATEGORY + " = ? AND " + COL_USER_REF + " = ?",
+                new String[]{categoryName, String.valueOf(userId)});
+
+        addLog("Удалена категория: " + categoryName);
+    }
+    public void updateCategory(String oldName, String newName) {
+        int userId = getCurrentUserId();
+        SQLiteDatabase db = getWritableDatabase();
+
+        // Обновляем название категории в таблице categories
+        ContentValues catValues = new ContentValues();
+        catValues.put("name", newName);
+        db.update("categories", catValues, "name = ? AND user_id = ?",
+                new String[]{oldName, String.valueOf(userId)});
+
+        // Обновляем категорию у всех привычек
+        ContentValues habitValues = new ContentValues();
+        habitValues.put(COL_HABIT_CATEGORY, newName);
+        db.update(TABLE_HABITS, habitValues, COL_HABIT_CATEGORY + " = ? AND " + COL_USER_REF + " = ?",
+                new String[]{oldName, String.valueOf(userId)});
+
+        addLog("Категория переименована: " + oldName + " → " + newName);
     }
 }

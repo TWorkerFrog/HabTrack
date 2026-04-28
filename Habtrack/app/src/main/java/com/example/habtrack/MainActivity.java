@@ -194,10 +194,24 @@ public class MainActivity extends AppCompatActivity {
                 DatabaseHelper db = DatabaseHelper.getInstance(this);
                 db.addCategory(newCategory);
 
-                categories.add(newCategory);
-                displayCategories.add(newCategory);
+                // ← ОБНОВЛЯЕМ ЛОКАЛЬНЫЙ СПИСОК
+                categories.clear();
+                categories.addAll(db.getUserCategories());
+                categories.remove("Без категории");
+
+                // Обновляем displayCategories
+                displayCategories.clear();
+                displayCategories.add("Без категории");
+                displayCategories.addAll(categories);
+
                 adapter.notifyDataSetChanged();
                 spinner.setSelection(displayCategories.size() - 1);
+
+                // ← ОБНОВЛЯЕМ КАТЕГОРИИ В HABITSFRAGMENT
+                if (habitsFragment != null) {
+                    habitsFragment.refreshCategories();
+                }
+
                 dialog.dismiss();
                 Toast.makeText(this, "Категория добавлена", Toast.LENGTH_SHORT).show();
             } else if (newCategory.isEmpty()) {
