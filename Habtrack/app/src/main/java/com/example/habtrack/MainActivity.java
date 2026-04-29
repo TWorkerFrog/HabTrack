@@ -24,6 +24,7 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
 
     private HabitsFragment habitsFragment;
+    private boolean isOnHabitsScreen = true;
     private List<String> categories = new ArrayList<>();
     private BottomNavigationView bottomNavigationView;
 
@@ -56,12 +57,16 @@ public class MainActivity extends AppCompatActivity {
 
             if (itemId == R.id.nav_habits) {
                 selectedFragment = habitsFragment;
+                isOnHabitsScreen = true;
             } else if (itemId == R.id.nav_calendar) {
                 selectedFragment = new CalendarFragment();
+                isOnHabitsScreen = false;
             } else if (itemId == R.id.nav_stats) {
                 selectedFragment = new StatsFragment();
+                isOnHabitsScreen = false;
             } else if (itemId == R.id.nav_profile) {
                 selectedFragment = new ProfileFragment();
+                isOnHabitsScreen = false;
             }
 
             if (selectedFragment != null) {
@@ -69,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
                         .replace(R.id.fragment_container, selectedFragment)
                         .commit();
             }
+            invalidateOptionsMenu();
             return true;
         });
     }
@@ -87,7 +93,20 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.toolbar_menu, menu);
+        MenuItem addItem = menu.findItem(R.id.action_add);
+        if (addItem != null) {
+            addItem.setVisible(isOnHabitsScreen);
+        }
         return true;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        MenuItem addItem = menu.findItem(R.id.action_add);
+        if (addItem != null) {
+            addItem.setVisible(isOnHabitsScreen);
+        }
+        return super.onPrepareOptionsMenu(menu);
     }
 
     @Override

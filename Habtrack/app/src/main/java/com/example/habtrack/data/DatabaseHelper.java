@@ -135,14 +135,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             habit1.put(COL_HABIT_TITLE, "Прочитать книгу");
             habit1.put(COL_HABIT_CATEGORY, "Развитие");
             habit1.put(COL_USER_REF, 1);
-            habit1.put(COL_CREATED_AT, System.currentTimeMillis());
+            habit1.put(COL_CREATED_AT, System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000); // 30 дней назад
             db.insert(TABLE_HABITS, null, habit1);
 
             ContentValues habit2 = new ContentValues();
             habit2.put(COL_HABIT_TITLE, "Сделать зарядку");
             habit2.put(COL_HABIT_CATEGORY, "Здоровье");
             habit2.put(COL_USER_REF, 1);
-            habit2.put(COL_CREATED_AT, System.currentTimeMillis());
+            habit2.put(COL_CREATED_AT, System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000); // 30 дней назад
             db.insert(TABLE_HABITS, null, habit2);
         }
         cursor.close();
@@ -230,7 +230,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = getReadableDatabase();
 
         Cursor cursor = db.query(TABLE_HABITS,
-                new String[]{COL_HABIT_ID, COL_HABIT_TITLE, COL_HABIT_CATEGORY},
+                new String[]{COL_HABIT_ID, COL_HABIT_TITLE, COL_HABIT_CATEGORY, COL_CREATED_AT},
                 COL_USER_REF + " = ?",
                 new String[]{String.valueOf(userId)},
                 null, null, COL_HABIT_ID + " DESC");
@@ -239,7 +239,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             Habit habit = new Habit(
                     cursor.getInt(0),
                     cursor.getString(1),
-                    cursor.getString(2)
+                    cursor.getString(2),
+                    cursor.getLong(3)  // ← добавить
             );
             habits.add(habit);
         }
@@ -318,16 +319,19 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         private int id;
         private String title;
         private String category;
+        private long createdAt;
 
-        public Habit(int id, String title, String category) {
+        public Habit(int id, String title, String category, long createdAt) {
             this.id = id;
             this.title = title;
             this.category = category;
+            this.createdAt = createdAt;
         }
 
         public int getId() { return id; }
         public String getTitle() { return title; }
         public String getCategory() { return category; }
+        public long getCreatedAt() { return createdAt; }
     }
 
     // Получить категории пользователя

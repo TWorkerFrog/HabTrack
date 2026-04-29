@@ -19,6 +19,7 @@ import com.example.habtrack.R;
 import com.example.habtrack.data.DatabaseHelper;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
 
 public class CalendarFragment extends Fragment {
 
@@ -26,7 +27,7 @@ public class CalendarFragment extends Fragment {
     private RecyclerView rvWeekdays;
     private RecyclerView rvCalendar;
     private RecyclerView rvDayHabits;
-    private ScrollView svDayDetails;
+    private LinearLayout layoutDayDetails;
     private ProgressBar progressBar;
     private TextView tvSelectedDate;
     private TextView tvProgressPercent;
@@ -48,6 +49,7 @@ public class CalendarFragment extends Fragment {
     // Adapters
     private CalendarAdapter calendarAdapter;
     private int selectedPosition = -1;
+    private BottomSheetBehavior<View> bottomSheetBehavior;  // ← добавить в поля класса
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -59,13 +61,21 @@ public class CalendarFragment extends Fragment {
         rvWeekdays = view.findViewById(R.id.rv_weekdays);
         rvCalendar = view.findViewById(R.id.rv_calendar);
         rvDayHabits = view.findViewById(R.id.rv_day_habits);
-        svDayDetails = view.findViewById(R.id.sv_day_details);
         progressBar = view.findViewById(R.id.calendar_progress_bar);
         tvSelectedDate = view.findViewById(R.id.tv_selected_date);
         tvProgressPercent = view.findViewById(R.id.tv_calendar_progress_percent);
         tvMonthYear = view.findViewById(R.id.tv_month_year);
         btnPrevMonth = view.findViewById(R.id.btn_prev_month);
         btnNextMonth = view.findViewById(R.id.btn_next_month);
+
+
+        // Настройка BottomSheet
+        View bottomSheet = view.findViewById(R.id.bottom_sheet);
+        bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
+        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+        // Только увеличиваем высоту раскрытия
+        bottomSheetBehavior.setPeekHeight(80);  // чуть выше полоска
+        bottomSheetBehavior.setPeekHeight(80);  // чуть выше полоска
 
         // Настройка RecyclerView для привычек дня
         rvDayHabits.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -95,6 +105,13 @@ public class CalendarFragment extends Fragment {
         });
 
         return view;
+    }
+
+
+
+
+    private int dpToPx(int dp) {
+        return (int) (dp * getResources().getDisplayMetrics().density);
     }
 
     /* Показывает диалог выбора месяца и года*/
@@ -166,21 +183,35 @@ public class CalendarFragment extends Fragment {
         List<DatabaseHelper.Habit> allHabits = db.getHabits();
         if (allHabits == null) allHabits = new ArrayList<>();
 
+        String today = apiFormat.format(new Date());
+
         Calendar dayCal = (Calendar) startCal.clone();
 
         while (dayCal.before(endCal) || dayCal.equals(endCal)) {
             String dateStr = apiFormat.format(dayCal.getTime());
+            long dayTimestamp = dayCal.getTimeInMillis();
 
             List<Integer> completions = db.getCompletionsForDate(dateStr);
             if (completions == null) completions = new ArrayList<>();
 
-            // Процент выполнения за день
-            int percent = allHabits.isEmpty() ? 0 : (completions.size() * 100) / allHabits.size();
+            // Для сегодняшнего дня показываем все привычки
+            // Для прошлых дней — только те, что созданы до этого дня
+            List<DatabaseHelper.Habit> habitsForDay = new ArrayList<>();
+            for (DatabaseHelper.Habit habit : allHabits) {
+                if (dateStr.equals(today)) {
+                    // Сегодня — все привычки
+                    habitsForDay.add(habit);
+                } else if (habit.getCreatedAt() <= dayTimestamp) {
+                    // Прошлые дни — только созданные до этого дня
+                    habitsForDay.add(habit);
+                }
+            }
+
+            int percent = habitsForDay.isEmpty() ? 0 : (completions.size() * 100) / habitsForDay.size();
             dayProgressMap.put(dateStr, percent);
 
-            // Список привычек с отметками
             List<HabitWithStatus> habitList = new ArrayList<>();
-            for (DatabaseHelper.Habit habit : allHabits) {
+            for (DatabaseHelper.Habit habit : habitsForDay) {
                 boolean isCompleted = completions.contains(habit.getId());
                 habitList.add(new HabitWithStatus(habit.getTitle(), habit.getCategory(), isCompleted));
             }
@@ -204,11 +235,13 @@ public class CalendarFragment extends Fragment {
 
         int daysInMonth = firstDay.getActualMaximum(Calendar.DAY_OF_MONTH);
 
+        String today = apiFormat.format(new Date());
+
         List<CalendarDayItem> items = new ArrayList<>();
 
         // Пустые ячейки в начале месяца
         for (int i = 0; i < firstDayOfWeek; i++) {
-            items.add(new CalendarDayItem(-1, null, -1, 0));
+            items.add(new CalendarDayItem(-1, null, -1, 0, false));
         }
 
         // Дни месяца
@@ -219,14 +252,16 @@ public class CalendarFragment extends Fragment {
 
             int color;
             if (percent == 100) {
-                color = 0xFF28A745; // зелёный
+                color = 0xFF28A745;
             } else if (percent > 0) {
-                color = 0xFFFF6B35; // оранжевый
+                color = 0xFFFF6B35;
             } else {
-                color = -1; // нет фона
+                color = -1;
             }
 
-            items.add(new CalendarDayItem(i, dateStr, color, percent));
+            boolean isToday = dateStr.equals(today);
+
+            items.add(new CalendarDayItem(i, dateStr, color, percent, isToday));
         }
 
         rvCalendar.setLayoutManager(new GridLayoutManager(getContext(), 7));
@@ -261,8 +296,10 @@ public class CalendarFragment extends Fragment {
         DayHabitsAdapter adapter = new DayHabitsAdapter(habits);
         rvDayHabits.setAdapter(adapter);
 
-        // Показываем нижнюю плашку
-        svDayDetails.setVisibility(View.VISIBLE);
+        // Раскрываем bottom sheet
+        if (bottomSheetBehavior != null) {
+            bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+        }
     }
 
     /* Обновление отображения месяца на экране*/
@@ -284,6 +321,7 @@ public class CalendarFragment extends Fragment {
         @Override
         public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             TextView tv = new TextView(parent.getContext());
+
             tv.setLayoutParams(new ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -320,12 +358,14 @@ public class CalendarFragment extends Fragment {
         String date;
         int color;
         int percent;
+        boolean isToday;
 
-        CalendarDayItem(int day, String date, int color, int percent) {
+        CalendarDayItem(int day, String date, int color, int percent, boolean isToday) {
             this.day = day;
             this.date = date;
             this.color = color;
             this.percent = percent;
+            this.isToday = isToday;
         }
     }
 
@@ -369,7 +409,6 @@ public class CalendarFragment extends Fragment {
 
             if (item.day > 0) {
                 holder.textView.setText(String.valueOf(item.day));
-                holder.textView.setTextColor(Color.parseColor("#212529"));
 
                 if (position == selectedPosition) {
                     GradientDrawable bg = new GradientDrawable();
@@ -377,6 +416,13 @@ public class CalendarFragment extends Fragment {
                     bg.setShape(GradientDrawable.OVAL);
                     holder.textView.setBackground(bg);
                     holder.textView.setTextColor(Color.WHITE);
+                } else if (item.isToday) {
+                    GradientDrawable borderBg = new GradientDrawable();
+                    borderBg.setColor(Color.TRANSPARENT);
+                    borderBg.setStroke(2, ContextCompat.getColor(holder.textView.getContext(), R.color.orange_primary));
+                    borderBg.setShape(GradientDrawable.OVAL);
+                    holder.textView.setBackground(borderBg);
+                    holder.textView.setTextColor(ContextCompat.getColor(holder.textView.getContext(), R.color.orange_primary));
                 } else if (item.color != -1) {
                     GradientDrawable bg = new GradientDrawable();
                     bg.setColor(item.color);
@@ -389,6 +435,7 @@ public class CalendarFragment extends Fragment {
                     }
                 } else {
                     holder.textView.setBackgroundColor(Color.TRANSPARENT);
+                    holder.textView.setTextColor(Color.parseColor("#212529"));
                 }
 
                 holder.textView.setOnClickListener(v -> {
