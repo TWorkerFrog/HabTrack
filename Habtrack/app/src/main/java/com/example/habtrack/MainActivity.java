@@ -36,8 +36,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
-
+        // Проверка авторизации
         AuthManager authManager = new AuthManager(this);
         if (!authManager.isLoggedIn()) {
             startActivity(new Intent(this, LoginActivity.class));
@@ -50,12 +49,10 @@ public class MainActivity extends AppCompatActivity {
 
         bottomNavigationView = findViewById(R.id.bottom_navigation);
 
-        // Загружаем категории из БД
         loadCategoriesFromDb();
 
         habitsFragment = new HabitsFragment();
 
-        // Загружаем начальный фрагмент
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
                     .replace(R.id.fragment_container, habitsFragment)
@@ -91,10 +88,10 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    // Загрузка категорий из базы данных
     private void loadCategoriesFromDb() {
         DatabaseHelper db = DatabaseHelper.getInstance(this);
         categories = db.getUserCategories();
-        // Убираем "Без категории" из основного списка для логики
         categories.remove("Без категории");
     }
 
@@ -130,6 +127,7 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    // Диалог добавления новой привычки
     private void showAddHabitDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View view = getLayoutInflater().inflate(R.layout.dialog_add_habit, null);
@@ -148,7 +146,6 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        // Адаптер с читаемым текстом
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(
                 this,
                 android.R.layout.simple_spinner_item,
@@ -208,6 +205,7 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    // Диалог добавления новой категории
     private void showAddCategoryDialog(ArrayAdapter<String> adapter, Spinner spinner, List<String> displayCategories) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View view = getLayoutInflater().inflate(R.layout.dialog_add_category, null);
@@ -221,16 +219,13 @@ public class MainActivity extends AppCompatActivity {
         btnSave.setOnClickListener(v -> {
             String newCategory = etCategory.getText().toString().trim();
             if (!newCategory.isEmpty() && !categories.contains(newCategory)) {
-                // Сохраняем категорию в БД
                 DatabaseHelper db = DatabaseHelper.getInstance(this);
                 db.addCategory(newCategory);
 
-                // ← ОБНОВЛЯЕМ ЛОКАЛЬНЫЙ СПИСОК
                 categories.clear();
                 categories.addAll(db.getUserCategories());
                 categories.remove("Без категории");
 
-                // Обновляем displayCategories
                 displayCategories.clear();
                 displayCategories.add("Без категории");
                 displayCategories.addAll(categories);
@@ -238,7 +233,6 @@ public class MainActivity extends AppCompatActivity {
                 adapter.notifyDataSetChanged();
                 spinner.setSelection(displayCategories.size() - 1);
 
-                // ← ОБНОВЛЯЕМ КАТЕГОРИИ В HABITSFRAGMENT
                 if (habitsFragment != null) {
                     habitsFragment.refreshCategories();
                 }

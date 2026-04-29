@@ -20,7 +20,6 @@ import com.example.habtrack.data.DatabaseHelper;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
-import android.util.Log;
 
 public class CalendarFragment extends Fragment {
 
@@ -28,7 +27,6 @@ public class CalendarFragment extends Fragment {
     private RecyclerView rvWeekdays;
     private RecyclerView rvCalendar;
     private RecyclerView rvDayHabits;
-    private LinearLayout layoutDayDetails;
     private ProgressBar progressBar;
     private TextView tvSelectedDate;
     private TextView tvProgressPercent;
@@ -50,7 +48,7 @@ public class CalendarFragment extends Fragment {
     // Adapters
     private CalendarAdapter calendarAdapter;
     private int selectedPosition = -1;
-    private BottomSheetBehavior<View> bottomSheetBehavior;  // ← добавить в поля класса
+    private BottomSheetBehavior<View> bottomSheetBehavior;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -69,25 +67,16 @@ public class CalendarFragment extends Fragment {
         btnPrevMonth = view.findViewById(R.id.btn_prev_month);
         btnNextMonth = view.findViewById(R.id.btn_next_month);
 
-
-        // Настройка BottomSheet
+        // BottomSheet настройка
         View bottomSheet = view.findViewById(R.id.bottom_sheet);
         bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
         bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
-        // Только увеличиваем высоту раскрытия
-        bottomSheetBehavior.setPeekHeight(80);  // чуть выше полоска
-        bottomSheetBehavior.setPeekHeight(80);  // чуть выше полоска
+        bottomSheetBehavior.setPeekHeight(80);
 
-        // Настройка RecyclerView для привычек дня
         rvDayHabits.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        // Настройка дней недели
         setupWeekdays();
-
-        // Загрузка данных
         loadAllData();
-
-        // Обновление отображения месяца
         updateMonthDisplay();
 
         // Обработчики нажатий
@@ -108,14 +97,7 @@ public class CalendarFragment extends Fragment {
         return view;
     }
 
-
-
-
-    private int dpToPx(int dp) {
-        return (int) (dp * getResources().getDisplayMetrics().density);
-    }
-
-    /* Показывает диалог выбора месяца и года*/
+    // Диалог выбора месяца и года
     private void showMonthYearPicker() {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_month_year_picker, null);
@@ -151,7 +133,7 @@ public class CalendarFragment extends Fragment {
         dialog.show();
     }
 
-    /* Настройка отображения дней недели*/
+    // Настройка отображения дней недели
     private void setupWeekdays() {
         String[] weekDays = {"Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"};
         WeekdayAdapter adapter = new WeekdayAdapter(weekDays);
@@ -159,7 +141,7 @@ public class CalendarFragment extends Fragment {
         rvWeekdays.setAdapter(adapter);
     }
 
-    /* Загрузка всех данных за выбранный месяц*/
+    // Загрузка всех данных за выбранный месяц
     private void loadAllData() {
         dayProgressMap.clear();
         dayHabitsMap.clear();
@@ -189,7 +171,6 @@ public class CalendarFragment extends Fragment {
             List<Integer> completions = db.getCompletionsForDate(dateStr);
             if (completions == null) completions = new ArrayList<>();
 
-            // ✅ ИСПРАВЛЕНО: используем getHabitsForDate вместо getAllHabits
             List<DatabaseHelper.Habit> habitsForDay = db.getHabitsForDate(dateStr);
 
             int completionsCount = completions.size();
@@ -214,7 +195,7 @@ public class CalendarFragment extends Fragment {
         setupCalendarGrid();
     }
 
-    /* Построение сетки календаря*/
+    // Построение сетки календаря
     private void setupCalendarGrid() {
         int year = currentCalendar.get(Calendar.YEAR);
         int month = currentCalendar.get(Calendar.MONTH);
@@ -269,7 +250,7 @@ public class CalendarFragment extends Fragment {
         rvCalendar.setAdapter(calendarAdapter);
     }
 
-    /* Отображение информации о выбранном дне*/
+    // Отображение информации о выбранном дне
     private void showDayInfo(String date, int percent) {
         try {
             java.util.Date parsedDate = apiFormat.parse(date);
@@ -278,21 +259,9 @@ public class CalendarFragment extends Fragment {
             tvSelectedDate.setText(date);
         }
 
-        // 🔍 ЛОГИ ДЛЯ ОТЛАДКИ
         List<Integer> completions = db.getCompletionsForDate(date);
         List<DatabaseHelper.Habit> habitsForDay = db.getHabitsForDate(date);
 
-        Log.d("DEBUG_CALENDAR", "=== showDayInfo for " + date + " ===");
-        Log.d("DEBUG_CALENDAR", "Habits for day: " + habitsForDay.size());
-        for (DatabaseHelper.Habit h : habitsForDay) {
-            Log.d("DEBUG_CALENDAR", "  Habit: id=" + h.getId() + ", title=" + h.getTitle() + ", hidden_from=" + h.getHiddenFrom());
-        }
-        Log.d("DEBUG_CALENDAR", "Completions for day: " + completions.size());
-        for (int id : completions) {
-            Log.d("DEBUG_CALENDAR", "  Completion id=" + id);
-        }
-
-        // Считаем ВАЛИДНЫЕ отметки (которые есть в habitsForDay)
         int validCompletionsCount = 0;
         for (int completionId : completions) {
             for (DatabaseHelper.Habit habit : habitsForDay) {
@@ -310,13 +279,9 @@ public class CalendarFragment extends Fragment {
             if (newPercent > 100) newPercent = 100;
         }
 
-        Log.d("DEBUG_CALENDAR", "Valid completions: " + validCompletionsCount);
-        Log.d("DEBUG_CALENDAR", "Calculated percent: " + newPercent + "%");
-
         progressBar.setProgress(newPercent);
         tvProgressPercent.setText(newPercent + "%");
 
-        // Обновляем список привычек
         List<HabitWithStatus> habitList = new ArrayList<>();
         for (DatabaseHelper.Habit habit : habitsForDay) {
             boolean isCompleted = completions.contains(habit.getId());
@@ -326,20 +291,17 @@ public class CalendarFragment extends Fragment {
         DayHabitsAdapter adapter = new DayHabitsAdapter(habitList);
         rvDayHabits.setAdapter(adapter);
 
-        // Раскрываем bottom sheet
         if (bottomSheetBehavior != null) {
             bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
         }
     }
 
-    /* Обновление отображения месяца на экране*/
+    // Обновление отображения месяца
     private void updateMonthDisplay() {
         tvMonthYear.setText(monthFormat.format(currentCalendar.getTime()));
     }
 
-    // АДАПТЕРЫ И МОДЕЛИ
-
-    /* Адаптер для дней недели*/
+    // Адаптер для дней недели
     static class WeekdayAdapter extends RecyclerView.Adapter<WeekdayAdapter.ViewHolder> {
         private final String[] days;
 
@@ -351,7 +313,6 @@ public class CalendarFragment extends Fragment {
         @Override
         public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             TextView tv = new TextView(parent.getContext());
-
             tv.setLayoutParams(new ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -374,15 +335,11 @@ public class CalendarFragment extends Fragment {
 
         static class ViewHolder extends RecyclerView.ViewHolder {
             TextView textView;
-
-            ViewHolder(TextView tv) {
-                super(tv);
-                textView = tv;
-            }
+            ViewHolder(TextView tv) { super(tv); textView = tv; }
         }
     }
 
-    /* Модель дня календаря*/
+    // Модель дня календаря
     static class CalendarDayItem {
         int day;
         String date;
@@ -399,7 +356,7 @@ public class CalendarFragment extends Fragment {
         }
     }
 
-    /* Адаптер для сетки календаря */
+    // Адаптер для сетки календаря
     static class CalendarAdapter extends RecyclerView.Adapter<CalendarAdapter.ViewHolder> {
         private final List<CalendarDayItem> items;
         private final OnDayClickListener listener;
@@ -426,22 +383,15 @@ public class CalendarFragment extends Fragment {
         @Override
         public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             TextView tv = new TextView(parent.getContext());
-
-            // Рассчитываем размер ячейки
             if (cellSize == 0) {
                 int screenWidth = parent.getContext().getResources().getDisplayMetrics().widthPixels;
                 cellSize = screenWidth / 9;
             }
-
-            // Устанавливаем размер ячейки
             tv.setLayoutParams(new ViewGroup.LayoutParams(cellSize, cellSize));
             tv.setGravity(Gravity.CENTER);
             tv.setTextSize(14);
-
-            // Маленький внутренний отступ для круга (чтобы не наезжал)
             int innerPadding = cellSize / 100;
             tv.setPadding(innerPadding, innerPadding, innerPadding, innerPadding);
-
             return new ViewHolder(tv);
         }
 
@@ -499,16 +449,11 @@ public class CalendarFragment extends Fragment {
 
         static class ViewHolder extends RecyclerView.ViewHolder {
             TextView textView;
-
-            ViewHolder(TextView tv) {
-                super(tv);
-                textView = tv;
-            }
+            ViewHolder(TextView tv) { super(tv); textView = tv; }
         }
     }
 
-    /* Модель привычки с отметкой для отображения в деталях дня */
-
+    // Модель привычки с отметкой для отображения в деталях дня
     private static class HabitWithStatus {
         String title;
         String category;
@@ -521,7 +466,7 @@ public class CalendarFragment extends Fragment {
         }
     }
 
-    /*  Адаптер для списка привычек в деталях дня */
+    // Адаптер для списка привычек в деталях дня
     private static class DayHabitsAdapter extends RecyclerView.Adapter<DayHabitsAdapter.ViewHolder> {
         private final List<HabitWithStatus> habits;
 
@@ -551,8 +496,7 @@ public class CalendarFragment extends Fragment {
         }
 
         static class ViewHolder extends RecyclerView.ViewHolder {
-            TextView tvTitle;
-            TextView tvCategory;
+            TextView tvTitle, tvCategory;
             CheckBox checkBox;
 
             ViewHolder(@NonNull View itemView) {

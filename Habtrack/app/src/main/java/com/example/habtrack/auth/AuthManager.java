@@ -14,6 +14,7 @@ public class AuthManager {
         prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
     }
 
+    // Сохранение данных пользователя
     public void saveUser(int userId) {
         prefs.edit()
                 .putInt(KEY_USER_ID, userId)
@@ -21,14 +22,17 @@ public class AuthManager {
                 .apply();
     }
 
+    // Получение ID текущего пользователя
     public int getCurrentUserId() {
         return prefs.getInt(KEY_USER_ID, -1);
     }
 
+    // Проверка авторизации
     public boolean isLoggedIn() {
         return prefs.getBoolean(KEY_IS_LOGGED_IN, false);
     }
 
+    // Выход из аккаунта
     public void logout() {
         prefs.edit()
                 .clear()

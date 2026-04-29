@@ -21,7 +21,6 @@ import com.example.habtrack.data.DatabaseHelper;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.lang.reflect.Method;
-import android.util.Log;
 import java.util.stream.Collectors;
 
 public class HabitsFragment extends Fragment {
@@ -81,26 +80,21 @@ public class HabitsFragment extends Fragment {
 
         recyclerView.setAdapter(adapter);
 
-        // ========== DRAG AND DROP ==========
+        // Drag-and-drop для перетаскивания привычек
         ItemTouchHelper touchHelper = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(
-                ItemTouchHelper.UP | ItemTouchHelper.DOWN,
-                0
-        ) {
+                ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
             @Override
             public boolean onMove(@NonNull RecyclerView recyclerView,
                                   @NonNull RecyclerView.ViewHolder dragged,
                                   @NonNull RecyclerView.ViewHolder target) {
                 int from = dragged.getAdapterPosition();
                 int to = target.getAdapterPosition();
-
                 if (from == to) return true;
 
-                // Перемещаем в списке
                 DatabaseHelper.Habit habit = habits.get(from);
                 habits.remove(from);
                 habits.add(to, habit);
 
-                // Обновляем порядок в БД (пересчитываем все позиции)
                 for (int i = 0; i < habits.size(); i++) {
                     db.updateHabitOrder(habits.get(i).getId(), i);
                 }
@@ -111,11 +105,10 @@ public class HabitsFragment extends Fragment {
 
             @Override
             public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
-                // не используется
+                // Не используется
             }
         });
         touchHelper.attachToRecyclerView(recyclerView);
-        // =================================
 
         btnCheckAll.setOnClickListener(v -> {
             if (habits == null || habits.isEmpty()) return;
@@ -328,6 +321,7 @@ public class HabitsFragment extends Fragment {
         completedToday.addAll(completions);
     }
 
+    // Адаптер для списка привычек
     public static class HabitAdapter extends RecyclerView.Adapter<HabitAdapter.ViewHolder> {
         private final List<DatabaseHelper.Habit> habits;
         private final Set<Integer> completedToday;
@@ -368,9 +362,7 @@ public class HabitsFragment extends Fragment {
 
             holder.btnMenu.setOnClickListener(v -> {
                 android.content.Context wrapper = new android.view.ContextThemeWrapper(
-                        v.getContext(),
-                        R.style.MyPopupMenuTheme
-                );
+                        v.getContext(), R.style.MyPopupMenuTheme);
                 PopupMenu popupMenu = new PopupMenu(wrapper, holder.btnMenu);
                 popupMenu.inflate(R.menu.habit_menu);
 
@@ -410,6 +402,7 @@ public class HabitsFragment extends Fragment {
             return habits.size();
         }
 
+        // ViewHolder для карточки привычки
         static class ViewHolder extends RecyclerView.ViewHolder {
             TextView tvTitle, tvCategory;
             CheckBox checkBox;
@@ -426,6 +419,6 @@ public class HabitsFragment extends Fragment {
     }
 
     public void refreshCategories() {
-        // заглушка
+        // Заглушка для обновления категорий из MainActivity
     }
 }

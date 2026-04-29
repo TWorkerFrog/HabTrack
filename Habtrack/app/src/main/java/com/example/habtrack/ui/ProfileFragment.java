@@ -22,11 +22,11 @@ import com.example.habtrack.R;
 import com.example.habtrack.auth.AuthManager;
 import com.example.habtrack.auth.LoginActivity;
 import com.example.habtrack.data.DatabaseHelper;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 
 import java.util.ArrayList;
 import java.util.List;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 
 public class ProfileFragment extends Fragment {
 
@@ -42,7 +42,6 @@ public class ProfileFragment extends Fragment {
     private TextView tvCategoriesCount;
     private boolean isCategoriesExpanded = false;
 
-
     // Элементы профиля
     private TextView tvUsername, tvJoinDate, tvTotalStats;
     private LinearLayout layoutChangePassword, layoutDeleteAccount;
@@ -54,7 +53,7 @@ public class ProfileFragment extends Fragment {
         db = DatabaseHelper.getInstance(getContext());
         authManager = new AuthManager(getContext());
 
-        // Инициализация views
+        // Инициализация элементов
         rvCategories = view.findViewById(R.id.rv_categories);
         btnLogout = view.findViewById(R.id.btn_logout);
         layoutCategoriesHeader = view.findViewById(R.id.layout_categories_header);
@@ -62,18 +61,17 @@ public class ProfileFragment extends Fragment {
         ivArrow = view.findViewById(R.id.iv_arrow);
         tvCategoriesCount = view.findViewById(R.id.tv_categories_count);
 
-        // Элементы профиля
         tvUsername = view.findViewById(R.id.tv_username);
         tvJoinDate = view.findViewById(R.id.tv_join_date);
         tvTotalStats = view.findViewById(R.id.tv_total_stats);
         layoutChangePassword = view.findViewById(R.id.layout_change_password);
         layoutDeleteAccount = view.findViewById(R.id.layout_delete_account);
 
-        // Заполняем данными
+        // Заполнение данными
         loadUserInfo();
         loadUserStats();
 
-        // Настройка RecyclerView для категорий
+        // Настройка списка категорий
         rvCategories.setLayoutManager(new LinearLayoutManager(getContext()));
         loadCategories();
 
@@ -90,7 +88,7 @@ public class ProfileFragment extends Fragment {
         });
         rvCategories.setAdapter(categoriesAdapter);
 
-        // Обработчик заголовка категорий (раскрытие/скрытие)
+        // Раскрытие/скрытие списка категорий
         layoutCategoriesHeader.setOnClickListener(v -> toggleCategoriesList());
 
         // Кнопка выхода
@@ -109,13 +107,13 @@ public class ProfileFragment extends Fragment {
                     .show();
         });
 
-        // Сменить пароль
+        // Смена пароля
         layoutChangePassword.setOnClickListener(v -> showChangePasswordDialog());
 
-        // Удалить аккаунт
+        // Удаление аккаунта
         layoutDeleteAccount.setOnClickListener(v -> showDeleteAccountDialog());
 
-        // Кнопка добавления категории
+        // Добавление категории
         Button btnAddCategory = view.findViewById(R.id.btn_add_category);
         if (btnAddCategory != null) {
             btnAddCategory.setOnClickListener(v -> showAddCategoryDialog());
@@ -124,6 +122,7 @@ public class ProfileFragment extends Fragment {
         return view;
     }
 
+    // Загрузка информации о пользователе
     private void loadUserInfo() {
         int userId = authManager.getCurrentUserId();
         String username = getUsernameById(userId);
@@ -133,6 +132,7 @@ public class ProfileFragment extends Fragment {
         tvJoinDate.setText(joinDate != null ? "с " + joinDate : "");
     }
 
+    // Загрузка статистики пользователя
     private void loadUserStats() {
         int userId = authManager.getCurrentUserId();
         int totalHabits = db.getTotalHabitsCount(userId);
@@ -140,6 +140,7 @@ public class ProfileFragment extends Fragment {
         tvTotalStats.setText(totalHabits + " привычек, " + totalCompletions + " выполнено");
     }
 
+    // Получение имени пользователя по ID
     private String getUsernameById(int userId) {
         try {
             SQLiteDatabase database = db.getReadableDatabase();
@@ -157,6 +158,7 @@ public class ProfileFragment extends Fragment {
         return "Пользователь";
     }
 
+    // Диалог смены пароля
     private void showChangePasswordDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         View view = getLayoutInflater().inflate(R.layout.dialog_change_password, null);
@@ -200,6 +202,7 @@ public class ProfileFragment extends Fragment {
         dialog.show();
     }
 
+    // Диалог удаления аккаунта
     private void showDeleteAccountDialog() {
         new AlertDialog.Builder(getContext())
                 .setTitle("Удалить аккаунт")
@@ -221,6 +224,7 @@ public class ProfileFragment extends Fragment {
                 .show();
     }
 
+    // Раскрытие/скрытие списка категорий
     private void toggleCategoriesList() {
         if (isCategoriesExpanded) {
             layoutCategoriesList.setVisibility(View.GONE);
@@ -234,6 +238,7 @@ public class ProfileFragment extends Fragment {
         isCategoriesExpanded = !isCategoriesExpanded;
     }
 
+    // Загрузка категорий из БД
     private void loadCategories() {
         categories.clear();
         List<String> userCategories = db.getUserCategories();
@@ -245,6 +250,7 @@ public class ProfileFragment extends Fragment {
         tvCategoriesCount.setText(String.valueOf(categories.size()));
     }
 
+    // Диалог добавления категории
     private void showAddCategoryDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         View view = getLayoutInflater().inflate(R.layout.dialog_add_category, null);
@@ -273,6 +279,7 @@ public class ProfileFragment extends Fragment {
         dialog.show();
     }
 
+    // Диалог редактирования категории
     private void showEditCategoryDialog(String oldName, int position) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         View view = getLayoutInflater().inflate(R.layout.dialog_edit_category, null);
@@ -304,6 +311,7 @@ public class ProfileFragment extends Fragment {
         dialog.show();
     }
 
+    // Диалог удаления категории
     private void showDeleteCategoryDialog(String category, int position) {
         new AlertDialog.Builder(getContext())
                 .setTitle("Удалить категорию")
@@ -318,7 +326,7 @@ public class ProfileFragment extends Fragment {
                 .show();
     }
 
-    // Адаптер для категорий
+    // Адаптер для списка категорий
     static class CategoriesAdapter extends RecyclerView.Adapter<CategoriesAdapter.ViewHolder> {
         private final List<String> categories;
         private final Callbacks callbacks;

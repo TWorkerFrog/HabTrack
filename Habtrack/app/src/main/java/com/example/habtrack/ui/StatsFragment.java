@@ -25,7 +25,6 @@ import com.github.mikephil.charting.data.PieEntry;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 
-
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -43,7 +42,6 @@ public class StatsFragment extends Fragment {
     private LineChart chartProgress;
     private PieChart chartCategories;
 
-    private int currentMode = 0; // 0=неделя, 1=месяц, 2=произвольный
     private Calendar customStartDate = null;
     private Calendar customEndDate = null;
 
@@ -64,20 +62,17 @@ public class StatsFragment extends Fragment {
         chartProgress = view.findViewById(R.id.chart_progress);
         chartCategories = view.findViewById(R.id.chart_categories);
 
-        // Настройка графиков
         setupCharts();
 
-        // Кнопка выбора периода
         tvSelectPeriod.setOnClickListener(v -> showPeriodBottomSheet());
 
-        // Загрузка данных за неделю по умолчанию
         loadWeekData();
 
         return view;
     }
 
+    // Настройка графиков
     private void setupCharts() {
-        // Настройка LineChart
         chartProgress.getDescription().setEnabled(false);
         chartProgress.setTouchEnabled(true);
         chartProgress.setDragEnabled(true);
@@ -91,19 +86,18 @@ public class StatsFragment extends Fragment {
         xAxis.setTextSize(10f);
         xAxis.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary));
 
-        // Настройка PieChart
         chartCategories.getDescription().setEnabled(false);
         chartCategories.setUsePercentValues(true);
         chartCategories.setEntryLabelTextSize(11f);
         chartCategories.setDrawEntryLabels(true);
     }
 
+    // Нижний лист с выбором периода
     private void showPeriodBottomSheet() {
         BottomSheetDialog bottomSheet = new BottomSheetDialog(requireContext());
         View sheetView = getLayoutInflater().inflate(R.layout.bottom_sheet_period, null);
         bottomSheet.setContentView(sheetView);
 
-        // Быстрые кнопки
         sheetView.findViewById(R.id.btn_today).setOnClickListener(v -> {
             loadTodayData();
             tvSelectPeriod.setText("Сегодня");
@@ -136,8 +130,8 @@ public class StatsFragment extends Fragment {
         bottomSheet.show();
     }
 
+    // Выбор произвольного диапазона дат
     private void showCustomDatePicker() {
-        // Диалог выбора начальной даты
         Calendar tempStart = customStartDate != null ? customStartDate : Calendar.getInstance();
         tempStart.add(Calendar.DAY_OF_YEAR, -6);
 
@@ -148,7 +142,6 @@ public class StatsFragment extends Fragment {
                     customStartDate = Calendar.getInstance();
                     customStartDate.set(year, month, dayOfMonth);
 
-                    // Диалог выбора конечной даты
                     DatePickerDialog endDialog = new DatePickerDialog(
                             requireContext(),
                             R.style.CustomDatePickerTheme,
@@ -178,6 +171,7 @@ public class StatsFragment extends Fragment {
         startDialog.show();
     }
 
+    // Загрузка данных за сегодня
     private void loadTodayData() {
         Calendar today = Calendar.getInstance();
         customStartDate = (Calendar) today.clone();
@@ -185,6 +179,7 @@ public class StatsFragment extends Fragment {
         loadCustomData();
     }
 
+    // Загрузка данных за вчера
     private void loadYesterdayData() {
         Calendar yesterday = Calendar.getInstance();
         yesterday.add(Calendar.DAY_OF_YEAR, -1);
@@ -193,6 +188,7 @@ public class StatsFragment extends Fragment {
         loadCustomData();
     }
 
+    // Загрузка данных за последние 7 дней
     private void loadWeekData() {
         customStartDate = Calendar.getInstance();
         customStartDate.add(Calendar.DAY_OF_YEAR, -6);
@@ -201,6 +197,7 @@ public class StatsFragment extends Fragment {
         loadCustomData();
     }
 
+    // Загрузка данных за последние 30 дней
     private void loadMonthData() {
         customStartDate = Calendar.getInstance();
         customStartDate.add(Calendar.DAY_OF_YEAR, -29);
@@ -209,6 +206,7 @@ public class StatsFragment extends Fragment {
         loadCustomData();
     }
 
+    // Загрузка данных за выбранный период
     private void loadCustomData() {
         if (customStartDate == null || customEndDate == null) return;
 
@@ -234,7 +232,7 @@ public class StatsFragment extends Fragment {
 
             dayStats.add(new DayStat(percent));
 
-            // Подписи для оси X
+            // Формирование подписей для оси X
             if ((customStartDate.getTimeInMillis() == customEndDate.getTimeInMillis()) ||
                     (customEndDate.getTimeInMillis() - customStartDate.getTimeInMillis() <= 7 * 24 * 60 * 60 * 1000)) {
                 labels.add(new SimpleDateFormat("dd.MM", Locale.getDefault()).format(current.getTime()));
@@ -262,6 +260,7 @@ public class StatsFragment extends Fragment {
         drawPieChart(categoryCount);
     }
 
+    // Расчёт текущей серии выполнений
     private int calculateCurrentStreak() {
         int streak = 0;
         Calendar calendar = Calendar.getInstance();
@@ -278,6 +277,7 @@ public class StatsFragment extends Fragment {
         return streak;
     }
 
+    // Построение линейного графика прогресса
     private void drawLineChart(List<DayStat> dayStats, List<String> labels) {
         List<Entry> entries = new ArrayList<>();
         for (int i = 0; i < dayStats.size(); i++) {
@@ -304,6 +304,7 @@ public class StatsFragment extends Fragment {
         chartProgress.invalidate();
     }
 
+    // Построение круговой диаграммы по категориям
     private void drawPieChart(Map<String, Integer> categoryCount) {
         List<PieEntry> entries = new ArrayList<>();
         for (Map.Entry<String, Integer> entry : categoryCount.entrySet()) {
@@ -316,18 +317,12 @@ public class StatsFragment extends Fragment {
             entries.add(new PieEntry(1, "Нет данных"));
         }
 
-        // Монохромный набор (оттенки оранжевого и серого)
         int[] colors = {
-                ContextCompat.getColor(requireContext(), R.color.orange_primary),   // яркий оранжевый
-                ContextCompat.getColor(requireContext(), R.color.orange_dark),      // тёмный оранжевый
-                0xFFFF8C42,  // средне-оранжевый
-                0xFFE8A070,  // приглушённый оранжевый
-                0xFFC2AC98,  // бежево-оранжевый
-                0xFF9E8E7A,  // серо-оранжевый
-                0xFF7A6B5C,  // тёмно-серый
-                0xFF5C5248,  // ещё темнее
-                0xFF403A35,  // почти чёрный
-                0xFFB0A59C   // светло-серый
+                ContextCompat.getColor(requireContext(), R.color.orange_primary),
+                ContextCompat.getColor(requireContext(), R.color.orange_dark),
+                0xFFFF8C42, 0xFFE8A070, 0xFFC2AC98,
+                0xFF9E8E7A, 0xFF7A6B5C, 0xFF5C5248,
+                0xFF403A35, 0xFFB0A59C
         };
 
         PieDataSet dataSet = new PieDataSet(entries, "Категории");
@@ -343,9 +338,9 @@ public class StatsFragment extends Fragment {
         chartCategories.invalidate();
     }
 
+    // Вспомогательный класс для хранения дневной статистики
     private static class DayStat {
         int percent;
         DayStat(int percent) { this.percent = percent; }
     }
-
 }

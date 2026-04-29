@@ -16,7 +16,7 @@ public class RegisterActivity extends AppCompatActivity {
 
     private EditText etLogin, etPassword, etConfirm;
     private Button btnRegister;
-    private TextView  btnBackToLogin;
+    private TextView btnBackToLogin;
     private TextView tvError;
     private DatabaseHelper db;
     private AuthManager authManager;
@@ -43,11 +43,13 @@ public class RegisterActivity extends AppCompatActivity {
         });
     }
 
+    // Попытка регистрации нового пользователя
     private void attemptRegister() {
         String login = etLogin.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
         String confirm = etConfirm.getText().toString().trim();
 
+        // Проверка логина
         if (TextUtils.isEmpty(login)) {
             showError("Введите логин");
             return;
@@ -58,6 +60,7 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
+        // Проверка пароля
         if (TextUtils.isEmpty(password)) {
             showError("Введите пароль");
             return;
@@ -80,8 +83,8 @@ public class RegisterActivity extends AppCompatActivity {
 
         btnRegister.setEnabled(false);
 
+        // Регистрация в базе данных
         if (db.register(login, password)) {
-            // Автоматически логиним после регистрации
             if (db.login(login, password)) {
                 int userId = db.getUserIdByUsername(login);
                 authManager.saveUser(userId);
@@ -96,11 +99,13 @@ public class RegisterActivity extends AppCompatActivity {
         }
     }
 
+    // Отображение ошибки
     private void showError(String message) {
         tvError.setText(message);
         tvError.setVisibility(View.VISIBLE);
     }
 
+    // Переход на главный экран
     private void startMainActivity() {
         Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
