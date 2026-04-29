@@ -63,8 +63,13 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        if (password.length() < 3) {
-            showError("Пароль должен быть не менее 3 символов");
+        if (password.length() < 4) {
+            showError("Пароль должен быть не менее 4 символов");
+            return;
+        }
+
+        if (password.length() > 20) {
+            showError("Пароль не должен превышать 20 символов");
             return;
         }
 

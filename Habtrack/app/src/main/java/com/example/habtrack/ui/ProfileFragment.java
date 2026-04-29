@@ -176,16 +176,22 @@ public class ProfileFragment extends Fragment {
 
             if (oldPass.isEmpty() || newPass.isEmpty()) {
                 Toast.makeText(getContext(), "Заполните все поля", Toast.LENGTH_SHORT).show();
+            } else if (newPass.length() < 4) {
+                etNewPassword.setError("Пароль должен быть не менее 4 символов");
+                Toast.makeText(getContext(), "Пароль должен быть не менее 4 символов", Toast.LENGTH_SHORT).show();
+            } else if (newPass.length() > 20) {
+                etNewPassword.setError("Пароль не должен превышать 20 символов");
+                Toast.makeText(getContext(), "Пароль не должен превышать 20 символов", Toast.LENGTH_SHORT).show();
             } else if (!newPass.equals(confirmPass)) {
+                etConfirmPassword.setError("Пароли не совпадают");
                 Toast.makeText(getContext(), "Новые пароли не совпадают", Toast.LENGTH_SHORT).show();
-            } else if (newPass.length() < 3) {
-                Toast.makeText(getContext(), "Пароль должен быть не менее 3 символов", Toast.LENGTH_SHORT).show();
             } else {
                 int userId = authManager.getCurrentUserId();
                 if (db.changePassword(userId, oldPass, newPass)) {
                     Toast.makeText(getContext(), "Пароль успешно изменён", Toast.LENGTH_SHORT).show();
                     dialog.dismiss();
                 } else {
+                    etOldPassword.setError("Неверный пароль");
                     Toast.makeText(getContext(), "Неверный старый пароль", Toast.LENGTH_SHORT).show();
                 }
             }

@@ -13,6 +13,7 @@ import android.widget.*;
 import androidx.annotation.NonNull;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.habtrack.R;
@@ -80,10 +81,45 @@ public class HabitsFragment extends Fragment {
 
         recyclerView.setAdapter(adapter);
 
+        // ========== DRAG AND DROP ==========
+        ItemTouchHelper touchHelper = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(
+                ItemTouchHelper.UP | ItemTouchHelper.DOWN,
+                0
+        ) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView,
+                                  @NonNull RecyclerView.ViewHolder dragged,
+                                  @NonNull RecyclerView.ViewHolder target) {
+                int from = dragged.getAdapterPosition();
+                int to = target.getAdapterPosition();
+
+                if (from == to) return true;
+
+                // Перемещаем в списке
+                DatabaseHelper.Habit habit = habits.get(from);
+                habits.remove(from);
+                habits.add(to, habit);
+
+                // Обновляем порядок в БД (пересчитываем все позиции)
+                for (int i = 0; i < habits.size(); i++) {
+                    db.updateHabitOrder(habits.get(i).getId(), i);
+                }
+
+                adapter.notifyItemMoved(from, to);
+                return true;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                // не используется
+            }
+        });
+        touchHelper.attachToRecyclerView(recyclerView);
+        // =================================
+
         btnCheckAll.setOnClickListener(v -> {
             if (habits == null || habits.isEmpty()) return;
 
-            // Считаем валидные отметки
             int validCompletionsCount = 0;
             for (int id : completedToday) {
                 for (DatabaseHelper.Habit h : habits) {
@@ -97,14 +133,12 @@ public class HabitsFragment extends Fragment {
             boolean allChecked = validCompletionsCount == habits.size();
 
             if (allChecked) {
-                // Снимаем отметки только с существующих привычек
                 for (DatabaseHelper.Habit habit : habits) {
                     if (completedToday.contains(habit.getId())) {
                         db.toggleCompletion(habit.getId(), todayDate);
                     }
                 }
             } else {
-                // Отмечаем все неотмеченные привычки
                 for (DatabaseHelper.Habit habit : habits) {
                     if (!completedToday.contains(habit.getId())) {
                         db.toggleCompletion(habit.getId(), todayDate);
@@ -112,7 +146,6 @@ public class HabitsFragment extends Fragment {
                 }
             }
 
-            // Синхронизируем
             syncCompletionsFromDb();
             updateProgress();
             updateCheckAllButtonText();
@@ -124,12 +157,12 @@ public class HabitsFragment extends Fragment {
 
         return view;
     }
+
     private void syncCompletionsFromDb() {
         List<Integer> completions = db.getCompletionsForDate(todayDate);
         completedToday.clear();
         completedToday.addAll(completions);
     }
-
 
     public void refreshData() {
         loadData();
@@ -147,7 +180,6 @@ public class HabitsFragment extends Fragment {
             return;
         }
 
-        // Считаем только те отметки, которые относятся к существующим привычкам
         Set<Integer> validCompletions = new HashSet<>(completedToday);
         validCompletions.retainAll(habits.stream().map(h -> h.getId()).collect(Collectors.toSet()));
 
@@ -162,7 +194,6 @@ public class HabitsFragment extends Fragment {
             return;
         }
 
-        // Считаем ТОЛЬКО валидные отметки (которые есть в habits)
         int validCompletionsCount = 0;
         for (int id : completedToday) {
             for (DatabaseHelper.Habit h : habits) {
@@ -197,7 +228,6 @@ public class HabitsFragment extends Fragment {
 
         etName.setText(habit.getTitle());
 
-        // Получаем категории из БД
         List<String> categoriesList = db.getUserCategories();
 
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(
@@ -272,21 +302,15 @@ public class HabitsFragment extends Fragment {
     private void showDeleteConfirmDialog(DatabaseHelper.Habit habit) {
         String currentDate = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
 
-        Log.d("DEBUG_UI", "=== Delete dialog ===");
-        Log.d("DEBUG_UI", "Habit: id=" + habit.getId() + ", title=" + habit.getTitle());
-        Log.d("DEBUG_UI", "Current date: " + currentDate);
-
         new AlertDialog.Builder(getContext())
                 .setTitle("Удалить привычку")
                 .setMessage("Как удалить \"" + habit.getTitle() + "\"?")
                 .setPositiveButton("Только на сегодня", (dialog, which) -> {
-                    Log.d("DEBUG_UI", "User chose: ONLY TODAY");
                     db.hideHabitFromDate(habit.getId(), currentDate);
                     refreshData();
                     Toast.makeText(getContext(), "Привычка скрыта с сегодняшнего дня", Toast.LENGTH_SHORT).show();
                 })
                 .setNeutralButton("Навсегда", (dialog, which) -> {
-                    Log.d("DEBUG_UI", "User chose: FOREVER");
                     db.deleteHabit(habit.getId());
                     refreshData();
                     Toast.makeText(getContext(), "Привычка удалена навсегда", Toast.LENGTH_SHORT).show();
@@ -296,28 +320,14 @@ public class HabitsFragment extends Fragment {
     }
 
     private void loadData() {
-        Log.d("DEBUG_PROGRESS", "=== loadData ===");
-
-        // Очищаем сиротские отметки (один раз)
-        db.cleanupOrphanedCompletions();
-
         habits.clear();
         habits.addAll(db.getAllHabits());
-        Log.d("DEBUG_PROGRESS", "getAllHabits returned " + habits.size() + " habits");
-        for (DatabaseHelper.Habit h : habits) {
-            Log.d("DEBUG_PROGRESS", "  Habit from DB: id=" + h.getId() + ", title=" + h.getTitle());
-        }
 
         completedToday.clear();
         List<Integer> completions = db.getCompletionsForDate(todayDate);
         completedToday.addAll(completions);
-        Log.d("DEBUG_PROGRESS", "getCompletionsForDate returned " + completions.size() + " completions for " + todayDate);
-        for (int id : completions) {
-            Log.d("DEBUG_PROGRESS", "  Completion id=" + id);
-        }
     }
 
-    // Адаптер
     public static class HabitAdapter extends RecyclerView.Adapter<HabitAdapter.ViewHolder> {
         private final List<DatabaseHelper.Habit> habits;
         private final Set<Integer> completedToday;
@@ -357,10 +367,9 @@ public class HabitsFragment extends Fragment {
             });
 
             holder.btnMenu.setOnClickListener(v -> {
-                // Используем ТВОЮ светлую тему вместо Holo.Light
                 android.content.Context wrapper = new android.view.ContextThemeWrapper(
                         v.getContext(),
-                        R.style.MyPopupMenuTheme  // ← твоя тема
+                        R.style.MyPopupMenuTheme
                 );
                 PopupMenu popupMenu = new PopupMenu(wrapper, holder.btnMenu);
                 popupMenu.inflate(R.menu.habit_menu);
@@ -373,7 +382,6 @@ public class HabitsFragment extends Fragment {
                     Method setForceShowIcon = classPopupHelper.getMethod("setForceShowIcon", boolean.class);
                     setForceShowIcon.invoke(menuPopupHelper, true);
 
-                    // Дополнительно устанавливаем фон через рефлексию
                     Method setBackgroundDrawable = classPopupHelper.getMethod("setBackgroundDrawable", android.graphics.drawable.Drawable.class);
                     android.graphics.drawable.Drawable drawable = v.getContext().getResources().getDrawable(R.drawable.popup_menu_background);
                     setBackgroundDrawable.invoke(menuPopupHelper, drawable);
@@ -416,8 +424,8 @@ public class HabitsFragment extends Fragment {
             }
         }
     }
+
     public void refreshCategories() {
-        // Если в фрагменте есть спиннер с категориями — обновляем
-        // Пока просто заглушка
+        // заглушка
     }
 }

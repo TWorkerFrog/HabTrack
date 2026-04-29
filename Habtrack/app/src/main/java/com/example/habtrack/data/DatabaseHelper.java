@@ -17,7 +17,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String TAG = "DatabaseHelper";
     private static final String DATABASE_NAME = "habits.db";
-    private static final int DATABASE_VERSION = 7;
+    private static final int DATABASE_VERSION = 8;
 
     // Таблица пользователей
     private static final String TABLE_USERS = "users";
@@ -34,6 +34,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COL_CREATED_AT = "created_at";
     private static final String COL_HIDDEN_FROM = "hidden_from";
     private static final String COL_CREATED_DATE = "created_date";
+    private static final String COL_ORDER_POSITION = "order_position";
 
     // Таблица выполнений
     private static final String TABLE_COMPLETIONS = "completions";
@@ -95,6 +96,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 COL_CREATED_AT + " INTEGER, " +
                 COL_CREATED_DATE + " TEXT DEFAULT '', " +
                 COL_HIDDEN_FROM + " TEXT DEFAULT '', " +
+                COL_ORDER_POSITION + " INTEGER DEFAULT 0, " +  // ← добавить эту строку
                 "FOREIGN KEY(" + COL_USER_REF + ") REFERENCES " + TABLE_USERS + "(" + COL_USER_ID + "))";
         db.execSQL(createHabits);
 
@@ -338,22 +340,38 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         int userId = getCurrentUserId();
         String todayDate = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
 
+        // Получаем максимальный порядок + 1
+        int maxOrder = getMaxOrderPosition(userId);
+
         ContentValues values = new ContentValues();
         values.put(COL_HABIT_TITLE, title);
         values.put(COL_HABIT_CATEGORY, category != null ? category : "Без категории");
         values.put(COL_USER_REF, userId);
         values.put(COL_CREATED_AT, System.currentTimeMillis());
         values.put(COL_CREATED_DATE, todayDate);
-        values.put(COL_HIDDEN_FROM, "");  // Не скрыта
+        values.put(COL_HIDDEN_FROM, "");
+        values.put(COL_ORDER_POSITION, maxOrder + 1);
 
         long id = db.insert(TABLE_HABITS, null, values);
-
-        // Скрываем привычку для ВСЕХ ДНЕЙ ДО СЕГОДНЯ (включая сегодня? Нет, сегодня должна быть видна)
-        // На самом деле, если мы хотим, чтобы привычка НЕ ПОКАЗЫВАЛАСЬ в прошлых днях,
-        // нужно использовать created_date, что мы уже сделали. А сегодня она должна быть видна.
-
         addLog("Добавлена привычка: " + title);
         return id;
+    }
+
+    private int getMaxOrderPosition(int userId) {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT MAX(" + COL_ORDER_POSITION + ") FROM " + TABLE_HABITS +
+                " WHERE " + COL_USER_REF + " = ?", new String[]{String.valueOf(userId)});
+        int max = 0;
+        if (cursor.moveToFirst()) max = cursor.getInt(0);
+        cursor.close();
+        return max;
+    }
+
+    public void updateHabitOrder(int habitId, int newOrder) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COL_ORDER_POSITION, newOrder);
+        db.update(TABLE_HABITS, values, COL_HABIT_ID + " = ?", new String[]{String.valueOf(habitId)});
     }
 
     public void hideHabitFromDate(int habitId, String date) {
@@ -395,37 +413,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             String todayDate = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
             SQLiteDatabase db = getReadableDatabase();
 
-            Log.d("DEBUG_QUERY", "=== getAllHabits called ===");
-            Log.d("DEBUG_QUERY", "userId = " + userId + ", todayDate = " + todayDate);
-
-            // Сначала посмотрим ВСЕ привычки в БД
-            Cursor all = db.rawQuery("SELECT " + COL_HABIT_ID + ", " + COL_HABIT_TITLE +
-                    ", " + COL_HIDDEN_FROM + ", " + COL_CREATED_DATE +
-                    " FROM " + TABLE_HABITS, null);
-            Log.d("DEBUG_QUERY", "ALL habits in DB:");
-            while (all.moveToNext()) {
-                Log.d("DEBUG_QUERY", "  id=" + all.getInt(0) +
-                        ", title=" + all.getString(1) +
-                        ", hidden_from='" + all.getString(2) + "'" +
-                        ", created_date=" + all.getString(3));
-            }
-            all.close();
-
-            // Теперь запрос, который используется
+            // Теперь сортировка по order_position ASC (сначала маленькие числа)
             String sql = "SELECT " + COL_HABIT_ID + ", " + COL_HABIT_TITLE + ", " +
                     COL_HABIT_CATEGORY + ", " + COL_CREATED_AT +
                     " FROM " + TABLE_HABITS +
                     " WHERE " + COL_USER_REF + " = ?" +
                     " AND (" + COL_HIDDEN_FROM + " = '' OR " + COL_HIDDEN_FROM + " > ?)" +
                     " AND " + COL_CREATED_DATE + " <= ?" +
-                    " ORDER BY " + COL_HABIT_ID + " DESC";
-
-            Log.d("DEBUG_QUERY", "SQL: " + sql);
-            Log.d("DEBUG_QUERY", "Args: [" + userId + ", " + todayDate + ", " + todayDate + "]");
+                    " ORDER BY " + COL_ORDER_POSITION + " ASC, " + COL_HABIT_ID + " ASC";
 
             Cursor cursor = db.rawQuery(sql, new String[]{String.valueOf(userId), todayDate, todayDate});
-
-            Log.d("DEBUG_QUERY", "Query returned " + cursor.getCount() + " rows");
 
             while (cursor.moveToNext()) {
                 Habit habit = new Habit(
@@ -436,7 +433,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                         ""
                 );
                 habits.add(habit);
-                Log.d("DEBUG_QUERY", "  Returning habit: id=" + habit.getId() + ", title=" + habit.getTitle());
             }
             cursor.close();
         } catch (Exception e) {
