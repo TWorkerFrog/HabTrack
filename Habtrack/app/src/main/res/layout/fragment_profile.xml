@@ -200,7 +200,7 @@
                 android:id="@+id/rv_categories"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:nestedScrollingEnabled="false"/>
+                android:nestedScrollingEnabled="true"/>
 
             <Button
                 android:id="@+id/btn_add_category"
@@ -212,7 +212,8 @@
                 android:backgroundTint="@color/orange_light"
                 android:textColor="@color/orange_primary"
                 android:layout_marginTop="12dp"
-                app:cornerRadius="12dp"/>
+                app:cornerRadius="12dp"
+                android:stateListAnimator="@null"/>
 
         </LinearLayout>
 

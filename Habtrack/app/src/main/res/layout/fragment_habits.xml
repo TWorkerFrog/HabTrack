@@ -10,7 +10,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Сегодня"
+        android:text="Прогресс за день:"
         android:textSize="13sp"
         android:fontFamily="@font/montserrat"
         android:textColor="@color/text_hint"/>

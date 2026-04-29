@@ -38,7 +38,7 @@
             android:text="Апрель 2026"
             android:textSize="18sp"
             android:fontFamily="@font/montserrat_bold"
-            android:textColor="@color/orange_primary"
+            android:textColor="@color/text_primary"
             android:gravity="center"
             android:background="?attr/selectableItemBackground"
             android:padding="8dp"/>
