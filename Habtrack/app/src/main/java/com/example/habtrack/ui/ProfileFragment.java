@@ -22,10 +22,11 @@ import com.example.habtrack.R;
 import com.example.habtrack.auth.AuthManager;
 import com.example.habtrack.auth.LoginActivity;
 import com.example.habtrack.data.DatabaseHelper;
-import com.example.habtrack.MainActivity;
 
 import java.util.ArrayList;
 import java.util.List;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 
 public class ProfileFragment extends Fragment {
 
@@ -41,6 +42,11 @@ public class ProfileFragment extends Fragment {
     private TextView tvCategoriesCount;
     private boolean isCategoriesExpanded = false;
 
+
+    // Элементы профиля
+    private TextView tvUsername, tvJoinDate, tvTotalStats;
+    private LinearLayout layoutChangePassword, layoutDeleteAccount;
+
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_profile, container, false);
@@ -55,6 +61,17 @@ public class ProfileFragment extends Fragment {
         layoutCategoriesList = view.findViewById(R.id.layout_categories_list);
         ivArrow = view.findViewById(R.id.iv_arrow);
         tvCategoriesCount = view.findViewById(R.id.tv_categories_count);
+
+        // Элементы профиля
+        tvUsername = view.findViewById(R.id.tv_username);
+        tvJoinDate = view.findViewById(R.id.tv_join_date);
+        tvTotalStats = view.findViewById(R.id.tv_total_stats);
+        layoutChangePassword = view.findViewById(R.id.layout_change_password);
+        layoutDeleteAccount = view.findViewById(R.id.layout_delete_account);
+
+        // Заполняем данными
+        loadUserInfo();
+        loadUserStats();
 
         // Настройка RecyclerView для категорий
         rvCategories.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -92,11 +109,110 @@ public class ProfileFragment extends Fragment {
                     .show();
         });
 
+        // Сменить пароль
+        layoutChangePassword.setOnClickListener(v -> showChangePasswordDialog());
+
+        // Удалить аккаунт
+        layoutDeleteAccount.setOnClickListener(v -> showDeleteAccountDialog());
+
         // Кнопка добавления категории
         Button btnAddCategory = view.findViewById(R.id.btn_add_category);
-        btnAddCategory.setOnClickListener(v -> showAddCategoryDialog());
+        if (btnAddCategory != null) {
+            btnAddCategory.setOnClickListener(v -> showAddCategoryDialog());
+        }
 
         return view;
+    }
+
+    private void loadUserInfo() {
+        int userId = authManager.getCurrentUserId();
+        String username = getUsernameById(userId);
+        tvUsername.setText(username != null ? username : "Пользователь");
+
+        String joinDate = db.getUserJoinDate(userId);
+        tvJoinDate.setText(joinDate != null ? "с " + joinDate : "");
+    }
+
+    private void loadUserStats() {
+        int userId = authManager.getCurrentUserId();
+        int totalHabits = db.getTotalHabitsCount(userId);
+        int totalCompletions = db.getTotalCompletionsCount(userId);
+        tvTotalStats.setText(totalHabits + " привычек, " + totalCompletions + " выполнено");
+    }
+
+    private String getUsernameById(int userId) {
+        try {
+            SQLiteDatabase database = db.getReadableDatabase();
+            Cursor cursor = database.query("users", new String[]{"username"},
+                    "user_id = ?", new String[]{String.valueOf(userId)}, null, null, null);
+            if (cursor.moveToFirst()) {
+                String name = cursor.getString(0);
+                cursor.close();
+                return name;
+            }
+            cursor.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "Пользователь";
+    }
+
+    private void showChangePasswordDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        View view = getLayoutInflater().inflate(R.layout.dialog_change_password, null);
+        builder.setView(view);
+
+        EditText etOldPassword = view.findViewById(R.id.et_old_password);
+        EditText etNewPassword = view.findViewById(R.id.et_new_password);
+        EditText etConfirmPassword = view.findViewById(R.id.et_confirm_password);
+        Button btnSave = view.findViewById(R.id.btn_save);
+
+        AlertDialog dialog = builder.create();
+
+        btnSave.setOnClickListener(v -> {
+            String oldPass = etOldPassword.getText().toString().trim();
+            String newPass = etNewPassword.getText().toString().trim();
+            String confirmPass = etConfirmPassword.getText().toString().trim();
+
+            if (oldPass.isEmpty() || newPass.isEmpty()) {
+                Toast.makeText(getContext(), "Заполните все поля", Toast.LENGTH_SHORT).show();
+            } else if (!newPass.equals(confirmPass)) {
+                Toast.makeText(getContext(), "Новые пароли не совпадают", Toast.LENGTH_SHORT).show();
+            } else if (newPass.length() < 3) {
+                Toast.makeText(getContext(), "Пароль должен быть не менее 3 символов", Toast.LENGTH_SHORT).show();
+            } else {
+                int userId = authManager.getCurrentUserId();
+                if (db.changePassword(userId, oldPass, newPass)) {
+                    Toast.makeText(getContext(), "Пароль успешно изменён", Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                } else {
+                    Toast.makeText(getContext(), "Неверный старый пароль", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        dialog.show();
+    }
+
+    private void showDeleteAccountDialog() {
+        new AlertDialog.Builder(getContext())
+                .setTitle("Удалить аккаунт")
+                .setMessage("Вы уверены? Все привычки, категории и статистика будут удалены безвозвратно.")
+                .setPositiveButton("Удалить", (dialog, which) -> {
+                    int userId = authManager.getCurrentUserId();
+                    if (db.deleteAccount(userId)) {
+                        authManager.logout();
+                        Intent intent = new Intent(getContext(), LoginActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
+                        requireActivity().finish();
+                        Toast.makeText(getContext(), "Аккаунт удалён", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(getContext(), "Ошибка при удалении", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
     }
 
     private void toggleCategoriesList() {
@@ -106,7 +222,6 @@ public class ProfileFragment extends Fragment {
         } else {
             layoutCategoriesList.setVisibility(View.VISIBLE);
             ivArrow.setImageResource(R.drawable.ic_chevron_down);
-            // Обновляем список при раскрытии
             loadCategories();
             categoriesAdapter.notifyDataSetChanged();
         }
@@ -116,7 +231,6 @@ public class ProfileFragment extends Fragment {
     private void loadCategories() {
         categories.clear();
         List<String> userCategories = db.getUserCategories();
-        // Убираем "Без категории" из списка редактируемых
         for (String cat : userCategories) {
             if (!cat.equals("Без категории")) {
                 categories.add(cat);
@@ -226,7 +340,6 @@ public class ProfileFragment extends Fragment {
             holder.tvCategoryName.setText(category);
 
             holder.btnMenu.setOnClickListener(v -> {
-                // Используем существующий habit_menu.xml
                 PopupMenu popupMenu = new PopupMenu(v.getContext(), holder.btnMenu);
                 popupMenu.inflate(R.menu.habit_menu);
 

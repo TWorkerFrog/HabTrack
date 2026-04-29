@@ -52,6 +52,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COL_CATEGORY_ID = "category_id";
     private static final String COL_CATEGORY_NAME = "name";
 
+    private static final String COL_DISPLAY_NAME = "display_name";
+
     private static DatabaseHelper instance;
 
     public static synchronized DatabaseHelper getInstance(Context context) {
@@ -693,6 +695,131 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             Log.d("DatabaseHelper", "Habit " + habitId + " not found!");
         }
         cursor.close();
+    }
+
+    // ============= УПРАВЛЕНИЕ АККАУНТОМ =============
+
+    public String getUserJoinDate(int userId) {
+        try {
+            SQLiteDatabase db = getReadableDatabase();
+            // Пока заглушка - вернём текущую дату
+            // Позже добавим колонку created_at в таблицу users
+            SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
+            return sdf.format(new Date());
+        } catch (Exception e) {
+            Log.e(TAG, "getUserJoinDate: error", e);
+            return "01.01.2024";
+        }
+    }
+
+    public int getTotalHabitsCount(int userId) {
+        try {
+            SQLiteDatabase db = getReadableDatabase();
+            Cursor cursor = db.query(TABLE_HABITS, new String[]{"COUNT(*)"},
+                    COL_USER_REF + " = ?", new String[]{String.valueOf(userId)}, null, null, null);
+            int count = 0;
+            if (cursor.moveToFirst()) {
+                count = cursor.getInt(0);
+            }
+            cursor.close();
+            return count;
+        } catch (Exception e) {
+            Log.e(TAG, "getTotalHabitsCount: error", e);
+            return 0;
+        }
+    }
+
+    public int getTotalCompletionsCount(int userId) {
+        try {
+            SQLiteDatabase db = getReadableDatabase();
+            String sql = "SELECT COUNT(*) FROM " + TABLE_COMPLETIONS + " c " +
+                    "JOIN " + TABLE_HABITS + " h ON c." + COL_HABIT_REF + " = h." + COL_HABIT_ID +
+                    " WHERE h." + COL_USER_REF + " = ?";
+            Cursor cursor = db.rawQuery(sql, new String[]{String.valueOf(userId)});
+            int count = 0;
+            if (cursor.moveToFirst()) {
+                count = cursor.getInt(0);
+            }
+            cursor.close();
+            return count;
+        } catch (Exception e) {
+            Log.e(TAG, "getTotalCompletionsCount: error", e);
+            return 0;
+        }
+    }
+
+    public boolean changePassword(int userId, String oldPassword, String newPassword) {
+        try {
+            SQLiteDatabase db = getWritableDatabase();
+
+            // Проверяем старый пароль
+            Cursor cursor = db.query(TABLE_USERS, new String[]{COL_USER_ID},
+                    COL_USER_ID + " = ? AND " + COL_PASSWORD + " = ?",
+                    new String[]{String.valueOf(userId), oldPassword}, null, null, null);
+
+            boolean passwordValid = cursor.getCount() > 0;
+            cursor.close();
+
+            if (!passwordValid) {
+                return false;
+            }
+
+            // Обновляем пароль
+            ContentValues values = new ContentValues();
+            values.put(COL_PASSWORD, newPassword);
+            int rows = db.update(TABLE_USERS, values, COL_USER_ID + " = ?", new String[]{String.valueOf(userId)});
+
+            if (rows > 0) {
+                addLog("Пароль изменён для пользователя ID: " + userId);
+                return true;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "changePassword: error", e);
+        }
+        return false;
+    }
+
+    public boolean deleteAccount(int userId) {
+        SQLiteDatabase db = getWritableDatabase();
+        try {
+            db.beginTransaction();
+
+            // Получаем все привычки пользователя
+            Cursor habitsCursor = db.query(TABLE_HABITS, new String[]{COL_HABIT_ID},
+                    COL_USER_REF + " = ?", new String[]{String.valueOf(userId)}, null, null, null);
+
+            List<Integer> habitIds = new ArrayList<>();
+            while (habitsCursor.moveToNext()) {
+                habitIds.add(habitsCursor.getInt(0));
+            }
+            habitsCursor.close();
+
+            // Удаляем отметки привычек
+            for (int habitId : habitIds) {
+                db.delete(TABLE_COMPLETIONS, COL_HABIT_REF + " = ?", new String[]{String.valueOf(habitId)});
+            }
+
+            // Удаляем привычки
+            db.delete(TABLE_HABITS, COL_USER_REF + " = ?", new String[]{String.valueOf(userId)});
+
+            // Удаляем категории
+            db.delete(TABLE_CATEGORIES, COL_USER_REF + " = ?", new String[]{String.valueOf(userId)});
+
+            // Удаляем пользователя
+            int deleted = db.delete(TABLE_USERS, COL_USER_ID + " = ?", new String[]{String.valueOf(userId)});
+
+            db.setTransactionSuccessful();
+            db.endTransaction();
+
+            if (deleted > 0) {
+                addLog("Аккаунт ID: " + userId + " удалён");
+                return true;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "deleteAccount: error", e);
+            db.endTransaction();
+        }
+        return false;
     }
 
 
