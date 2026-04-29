@@ -320,7 +320,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                         cursor.getInt(0),
                         cursor.getString(1),
                         cursor.getString(2),
-                        cursor.getLong(3)
+                        cursor.getLong(3),
+                        "" // hiddenFrom пока пустой
                 ));
             }
             cursor.close();
@@ -429,7 +430,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                         cursor.getInt(0),
                         cursor.getString(1),
                         cursor.getString(2),
-                        cursor.getLong(3)
+                        cursor.getLong(3),
+                        ""
                 );
                 habits.add(habit);
                 Log.d("DEBUG_QUERY", "  Returning habit: id=" + habit.getId() + ", title=" + habit.getTitle());
@@ -655,7 +657,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         private long createdAt;
         private String hiddenFrom;
 
-        public Habit(int id, String title, String category, long createdAt) {
+        public Habit(int id, String title, String category, long createdAt, String hiddenFrom) {
             this.id = id;
             this.title = title;
             this.category = category;
