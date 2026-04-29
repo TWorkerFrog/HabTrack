@@ -12,53 +12,41 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Статистика"
-            android:textSize="20sp"
-            android:fontFamily="@font/montserrat_bold"
-            android:textColor="@color/text_primary"
-            android:layout_marginBottom="16dp"/>
-
-        <!-- Выбор периода -->
+        <!-- Заголовок + кнопка выбора периода -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_marginBottom="20dp">
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
 
             <TextView
-                android:id="@+id/tv_period_week"
                 android:layout_width="0dp"
-                android:layout_height="40dp"
+                android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:text="Статистика"
+                android:textSize="20sp"
+                android:fontFamily="@font/montserrat_bold"
+                android:textColor="@color/text_primary"/>
+
+            <TextView
+                android:id="@+id/tv_select_period"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
                 android:text="Неделя"
                 android:gravity="center"
-                android:textSize="14sp"
-                android:fontFamily="@font/montserrat_bold"
-                android:background="@drawable/bg_button_primary"
-                android:textColor="@color/white"
-                android:layout_marginEnd="8dp"
-                android:padding="10dp"/>
-
-            <TextView
-                android:id="@+id/tv_period_month"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_weight="1"
-                android:text="Месяц"
-                android:gravity="center"
-                android:textSize="14sp"
-                android:fontFamily="@font/montserrat_bold"
-                android:background="@drawable/bg_button_secondary"
+                android:textSize="12sp"
+                android:fontFamily="@font/montserrat"
                 android:textColor="@color/orange_primary"
-                android:padding="10dp"/>
+                android:background="@drawable/bg_button_secondary"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"/>
 
         </LinearLayout>
 
-        <!-- Карточки со статистикой -->
+        <!-- Карточки со статистикой (3 шт) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -67,28 +55,27 @@
 
             <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="100dp"
                 android:layout_weight="1"
                 android:layout_marginEnd="8dp"
                 android:orientation="vertical"
-                android:padding="12dp"
                 android:gravity="center"
-                android:background="#FFF5F0">
+                android:background="@drawable/bg_stat_card">
 
                 <TextView
                     android:id="@+id/tv_total_habits"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0"
-                    android:textSize="24sp"
+                    android:textSize="28sp"
                     android:fontFamily="@font/montserrat_bold"
                     android:textColor="@color/orange_primary"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Привычек"
-                    android:textSize="12sp"
+                    android:text="Всего привычек"
+                    android:textSize="11sp"
                     android:fontFamily="@font/montserrat"
                     android:textColor="@color/text_secondary"/>
 
@@ -96,28 +83,27 @@
 
             <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="100dp"
                 android:layout_weight="1"
                 android:layout_marginEnd="8dp"
                 android:orientation="vertical"
-                android:padding="12dp"
                 android:gravity="center"
-                android:background="#FFF5F0">
+                android:background="@drawable/bg_stat_card">
 
                 <TextView
                     android:id="@+id/tv_total_completions"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0"
-                    android:textSize="24sp"
+                    android:textSize="28sp"
                     android:fontFamily="@font/montserrat_bold"
                     android:textColor="@color/orange_primary"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Выполнено"
-                    android:textSize="12sp"
+                    android:text="Всего выполнено"
+                    android:textSize="11sp"
                     android:fontFamily="@font/montserrat"
                     android:textColor="@color/text_secondary"/>
 
@@ -125,27 +111,26 @@
 
             <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="100dp"
                 android:layout_weight="1"
                 android:orientation="vertical"
-                android:padding="12dp"
                 android:gravity="center"
-                android:background="#FFF5F0">
+                android:background="@drawable/bg_stat_card">
 
                 <TextView
                     android:id="@+id/tv_streak"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0"
-                    android:textSize="24sp"
+                    android:textSize="28sp"
                     android:fontFamily="@font/montserrat_bold"
                     android:textColor="@color/orange_primary"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Серия (дней)"
-                    android:textSize="12sp"
+                    android:text="Серия дней"
+                    android:textSize="11sp"
                     android:fontFamily="@font/montserrat"
                     android:textColor="@color/text_secondary"/>
 
@@ -153,19 +138,20 @@
 
         </LinearLayout>
 
+        <!-- График -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="График прогресса"
+            android:text="Динамика прогресса"
             android:textSize="16sp"
             android:fontFamily="@font/montserrat_bold"
             android:textColor="@color/text_primary"
-            android:layout_marginBottom="12dp"/>
+            android:layout_marginBottom="8dp"/>
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="250dp"
-            android:background="#FFF5F0"
+            android:layout_height="260dp"
+            android:background="@drawable/bg_stat_card"
             android:padding="8dp"
             android:orientation="vertical"
             android:layout_marginBottom="20dp">
@@ -177,19 +163,20 @@
 
         </LinearLayout>
 
+        <!-- Категории -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="По категориям"
+            android:text="Распределение по категориям"
             android:textSize="16sp"
             android:fontFamily="@font/montserrat_bold"
             android:textColor="@color/text_primary"
-            android:layout_marginBottom="12dp"/>
+            android:layout_marginBottom="8dp"/>
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="250dp"
-            android:background="#FFF5F0"
+            android:layout_height="260dp"
+            android:background="@drawable/bg_stat_card"
             android:padding="8dp"
             android:orientation="vertical">
 

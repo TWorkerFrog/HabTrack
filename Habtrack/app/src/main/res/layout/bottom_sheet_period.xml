@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/white"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Выберите период"
+        android:textSize="18sp"
+        android:fontFamily="@font/montserrat_bold"
+        android:textColor="@color/text_primary"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:id="@+id/btn_today"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Сегодня"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:textSize="14sp"
+        android:fontFamily="@font/montserrat"
+        android:background="?attr/selectableItemBackground"
+        android:layout_marginBottom="4dp"/>
+
+    <TextView
+        android:id="@+id/btn_yesterday"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Вчера"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:textSize="14sp"
+        android:fontFamily="@font/montserrat"
+        android:background="?attr/selectableItemBackground"
+        android:layout_marginBottom="4dp"/>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider"
+        android:layout_marginVertical="8dp"/>
+
+    <TextView
+        android:id="@+id/btn_week"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Последние 7 дней"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:textSize="14sp"
+        android:fontFamily="@font/montserrat"
+        android:background="?attr/selectableItemBackground"
+        android:layout_marginBottom="4dp"/>
+
+    <TextView
+        android:id="@+id/btn_month"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Последние 30 дней"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:textSize="14sp"
+        android:fontFamily="@font/montserrat"
+        android:background="?attr/selectableItemBackground"
+        android:layout_marginBottom="4dp"/>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider"
+        android:layout_marginVertical="8dp"/>
+
+    <TextView
+        android:id="@+id/btn_custom"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Выбрать диапазон"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:textSize="14sp"
+        android:fontFamily="@font/montserrat"
+        android:background="?attr/selectableItemBackground"
+        android:textColor="@color/orange_primary"/>
+
+</LinearLayout>

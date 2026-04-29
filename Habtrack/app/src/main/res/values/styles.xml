@@ -53,4 +53,51 @@
         <item name="android:textColor">@color/text_primary</item>
         <item name="android:fontFamily">@font/montserrat</item>
     </style>
+
+    <!-- Стиль для кастомного DatePickerDialog -->
+    <style name="CustomDatePickerTheme" parent="Theme.AppCompat.Light.Dialog">
+        <item name="android:windowBackground">@color/white</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColor">@color/orange_primary</item>
+        <item name="colorAccent">@color/orange_primary</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="android:datePickerStyle">@style/CustomDatePicker</item>
+        <!-- Добавь это для кнопок -->
+        <item name="android:buttonBarPositiveButtonStyle">@style/DatePickerPositiveButtonStyle</item>
+        <item name="android:buttonBarNegativeButtonStyle">@style/DatePickerNegativeButtonStyle</item>
+    </style>
+
+    <!-- Стиль для самого DatePicker View -->
+    <style name="CustomDatePicker" parent="android:Widget.Material.Light.DatePicker">
+        <item name="android:headerBackground">@color/orange_primary</item>
+        <item name="android:headerMonthTextAppearance">@style/CustomDatePickerHeaderText</item>
+        <item name="android:headerDayOfMonthTextAppearance">@style/CustomDatePickerHeaderDayText</item>
+        <item name="android:calendarViewShown">false</item>
+        <item name="android:datePickerMode">spinner</item>
+    </style>
+
+    <style name="CustomDatePickerHeaderText">
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+    </style>
+
+    <style name="CustomDatePickerHeaderDayText">
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">32sp</item>
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+    </style>
+
+
+    <style name="DatePickerPositiveButtonStyle" parent="Widget.AppCompat.Button.ButtonBar.AlertDialog">
+        <item name="android:textColor">@color/orange_primary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+    </style>
+
+    <style name="DatePickerNegativeButtonStyle" parent="Widget.AppCompat.Button.ButtonBar.AlertDialog">
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+    </style>
 </resources>

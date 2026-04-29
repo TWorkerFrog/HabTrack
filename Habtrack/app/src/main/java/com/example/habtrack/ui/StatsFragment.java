@@ -23,8 +23,8 @@ import com.github.mikephil.charting.data.PieData;
 import com.github.mikephil.charting.data.PieDataSet;
 import com.github.mikephil.charting.data.PieEntry;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
-import com.github.mikephil.charting.formatter.PercentFormatter;
-import com.github.mikephil.charting.utils.ColorTemplate;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -33,16 +33,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import android.app.DatePickerDialog;
 
 public class StatsFragment extends Fragment {
 
     private DatabaseHelper db;
     private TextView tvTotalHabits, tvTotalCompletions, tvStreak;
-    private TextView tvPeriodWeek, tvPeriodMonth;
+    private TextView tvSelectPeriod;
     private LineChart chartProgress;
     private PieChart chartCategories;
 
-    private boolean isWeekMode = true;
+    private int currentMode = 0; // 0=неделя, 1=месяц, 2=произвольный
+    private Calendar customStartDate = null;
+    private Calendar customEndDate = null;
+
+    private final SimpleDateFormat apiFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+    private final SimpleDateFormat displayFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
 
     @Nullable
     @Override
@@ -54,156 +60,215 @@ public class StatsFragment extends Fragment {
         tvTotalHabits = view.findViewById(R.id.tv_total_habits);
         tvTotalCompletions = view.findViewById(R.id.tv_total_completions);
         tvStreak = view.findViewById(R.id.tv_streak);
-        tvPeriodWeek = view.findViewById(R.id.tv_period_week);
-        tvPeriodMonth = view.findViewById(R.id.tv_period_month);
+        tvSelectPeriod = view.findViewById(R.id.tv_select_period);
         chartProgress = view.findViewById(R.id.chart_progress);
         chartCategories = view.findViewById(R.id.chart_categories);
 
-        tvPeriodWeek.setOnClickListener(v -> {
-            isWeekMode = true;
-            updatePeriodButtons();
-            loadStats();
-        });
+        // Настройка графиков
+        setupCharts();
 
-        tvPeriodMonth.setOnClickListener(v -> {
-            isWeekMode = false;
-            updatePeriodButtons();
-            loadStats();
-        });
+        // Кнопка выбора периода
+        tvSelectPeriod.setOnClickListener(v -> showPeriodBottomSheet());
 
-        loadStats();
+        // Загрузка данных за неделю по умолчанию
+        loadWeekData();
 
         return view;
     }
 
-    private void updatePeriodButtons() {
-        if (isWeekMode) {
-            tvPeriodWeek.setBackgroundResource(R.drawable.bg_button_primary);
-            tvPeriodWeek.setTextColor(Color.WHITE);
-            tvPeriodMonth.setBackgroundResource(R.drawable.bg_button_secondary);
-            tvPeriodMonth.setTextColor(ContextCompat.getColor(requireContext(), R.color.orange_primary));
-        } else {
-            tvPeriodMonth.setBackgroundResource(R.drawable.bg_button_primary);
-            tvPeriodMonth.setTextColor(Color.WHITE);
-            tvPeriodWeek.setBackgroundResource(R.drawable.bg_button_secondary);
-            tvPeriodWeek.setTextColor(ContextCompat.getColor(requireContext(), R.color.orange_primary));
-        }
+    private void setupCharts() {
+        // Настройка LineChart
+        chartProgress.getDescription().setEnabled(false);
+        chartProgress.setTouchEnabled(true);
+        chartProgress.setDragEnabled(true);
+        chartProgress.setScaleEnabled(true);
+        chartProgress.getAxisRight().setEnabled(false);
+        chartProgress.getAxisLeft().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary));
+
+        XAxis xAxis = chartProgress.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setGranularity(1f);
+        xAxis.setTextSize(10f);
+        xAxis.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary));
+
+        // Настройка PieChart
+        chartCategories.getDescription().setEnabled(false);
+        chartCategories.setUsePercentValues(true);
+        chartCategories.setEntryLabelTextSize(11f);
+        chartCategories.setDrawEntryLabels(true);
     }
 
-    private void loadStats() {
+    private void showPeriodBottomSheet() {
+        BottomSheetDialog bottomSheet = new BottomSheetDialog(requireContext());
+        View sheetView = getLayoutInflater().inflate(R.layout.bottom_sheet_period, null);
+        bottomSheet.setContentView(sheetView);
+
+        // Быстрые кнопки
+        sheetView.findViewById(R.id.btn_today).setOnClickListener(v -> {
+            loadTodayData();
+            tvSelectPeriod.setText("Сегодня");
+            bottomSheet.dismiss();
+        });
+
+        sheetView.findViewById(R.id.btn_yesterday).setOnClickListener(v -> {
+            loadYesterdayData();
+            tvSelectPeriod.setText("Вчера");
+            bottomSheet.dismiss();
+        });
+
+        sheetView.findViewById(R.id.btn_week).setOnClickListener(v -> {
+            loadWeekData();
+            tvSelectPeriod.setText("Неделя");
+            bottomSheet.dismiss();
+        });
+
+        sheetView.findViewById(R.id.btn_month).setOnClickListener(v -> {
+            loadMonthData();
+            tvSelectPeriod.setText("Месяц");
+            bottomSheet.dismiss();
+        });
+
+        sheetView.findViewById(R.id.btn_custom).setOnClickListener(v -> {
+            bottomSheet.dismiss();
+            showCustomDatePicker();
+        });
+
+        bottomSheet.show();
+    }
+
+    private void showCustomDatePicker() {
+        // Диалог выбора начальной даты
+        Calendar tempStart = customStartDate != null ? customStartDate : Calendar.getInstance();
+        tempStart.add(Calendar.DAY_OF_YEAR, -6);
+
+        DatePickerDialog startDialog = new DatePickerDialog(
+                requireContext(),
+                R.style.CustomDatePickerTheme,
+                (view, year, month, dayOfMonth) -> {
+                    customStartDate = Calendar.getInstance();
+                    customStartDate.set(year, month, dayOfMonth);
+
+                    // Диалог выбора конечной даты
+                    DatePickerDialog endDialog = new DatePickerDialog(
+                            requireContext(),
+                            R.style.CustomDatePickerTheme,
+                            (view2, year2, month2, dayOfMonth2) -> {
+                                customEndDate = Calendar.getInstance();
+                                customEndDate.set(year2, month2, dayOfMonth2);
+
+                                if (customStartDate.after(customEndDate)) {
+                                    Calendar temp = customStartDate;
+                                    customStartDate = customEndDate;
+                                    customEndDate = temp;
+                                }
+
+                                loadCustomData();
+                                tvSelectPeriod.setText(displayFormat.format(customStartDate.getTime()) + " - " + displayFormat.format(customEndDate.getTime()));
+                            },
+                            tempStart.get(Calendar.YEAR),
+                            tempStart.get(Calendar.MONTH),
+                            tempStart.get(Calendar.DAY_OF_MONTH)
+                    );
+                    endDialog.show();
+                },
+                tempStart.get(Calendar.YEAR),
+                tempStart.get(Calendar.MONTH),
+                tempStart.get(Calendar.DAY_OF_MONTH)
+        );
+        startDialog.show();
+    }
+
+    private void loadTodayData() {
+        Calendar today = Calendar.getInstance();
+        customStartDate = (Calendar) today.clone();
+        customEndDate = (Calendar) today.clone();
+        loadCustomData();
+    }
+
+    private void loadYesterdayData() {
+        Calendar yesterday = Calendar.getInstance();
+        yesterday.add(Calendar.DAY_OF_YEAR, -1);
+        customStartDate = (Calendar) yesterday.clone();
+        customEndDate = (Calendar) yesterday.clone();
+        loadCustomData();
+    }
+
+    private void loadWeekData() {
+        customStartDate = Calendar.getInstance();
+        customStartDate.add(Calendar.DAY_OF_YEAR, -6);
+        customStartDate.set(Calendar.HOUR_OF_DAY, 0);
+        customEndDate = Calendar.getInstance();
+        loadCustomData();
+    }
+
+    private void loadMonthData() {
+        customStartDate = Calendar.getInstance();
+        customStartDate.add(Calendar.DAY_OF_YEAR, -29);
+        customStartDate.set(Calendar.HOUR_OF_DAY, 0);
+        customEndDate = Calendar.getInstance();
+        loadCustomData();
+    }
+
+    private void loadCustomData() {
+        if (customStartDate == null || customEndDate == null) return;
+
         List<DatabaseHelper.Habit> allHabits = db.getAllHabits();
         int totalHabits = allHabits.size();
 
         int totalCompletions = 0;
-
         Map<String, Integer> categoryCount = new HashMap<>();
-
-        List<DayStats> dayStatsList = new ArrayList<>();
+        List<DayStat> dayStats = new ArrayList<>();
         List<String> labels = new ArrayList<>();
-        Calendar startDate = Calendar.getInstance();
 
-        if (isWeekMode) {
-            startDate.add(Calendar.DAY_OF_YEAR, -6);
-            startDate.set(Calendar.HOUR_OF_DAY, 0);
-            startDate.set(Calendar.MINUTE, 0);
-            startDate.set(Calendar.SECOND, 0);
+        Calendar current = (Calendar) customStartDate.clone();
+        int daysCount = 0;
 
-            Calendar endDate = Calendar.getInstance();
-            endDate.set(Calendar.HOUR_OF_DAY, 23);
-            endDate.set(Calendar.MINUTE, 59);
-            endDate.set(Calendar.SECOND, 59);
+        while (!current.after(customEndDate)) {
+            String dateStr = apiFormat.format(current.getTime());
+            List<Integer> completions = db.getCompletionsForDate(dateStr);
+            totalCompletions += completions.size();
 
-            Calendar current = (Calendar) startDate.clone();
-            SimpleDateFormat apiFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-            SimpleDateFormat displayFormat = new SimpleDateFormat("E", new Locale("ru"));
+            List<DatabaseHelper.Habit> habitsForDay = db.getHabitsForDate(dateStr);
+            int habitsCount = habitsForDay.size();
+            int percent = habitsCount > 0 ? (completions.size() * 100) / habitsCount : 0;
 
-            while (!current.after(endDate)) {
-                String dateStr = apiFormat.format(current.getTime());
-                List<Integer> completions = db.getCompletionsForDate(dateStr);
-                totalCompletions += completions.size();
+            dayStats.add(new DayStat(percent));
 
-                List<DatabaseHelper.Habit> habitsForDay = db.getHabitsForDate(dateStr);
-                int habitsCount = habitsForDay.size();
-                int completionsCount = completions.size();
-                int percent = habitsCount > 0 ? (completionsCount * 100) / habitsCount : 0;
-
-                String dayName = displayFormat.format(current.getTime());
-                labels.add(dayName);
-                dayStatsList.add(new DayStats(percent, completionsCount));
-
-                for (DatabaseHelper.Habit habit : habitsForDay) {
-                    String category = habit.getCategory();
-                    if (category == null || category.isEmpty()) category = "Без категории";
-                    categoryCount.put(category, categoryCount.getOrDefault(category, 0) + 1);
-                }
-
-                current.add(Calendar.DAY_OF_YEAR, 1);
+            // Подписи для оси X
+            if ((customStartDate.getTimeInMillis() == customEndDate.getTimeInMillis()) ||
+                    (customEndDate.getTimeInMillis() - customStartDate.getTimeInMillis() <= 7 * 24 * 60 * 60 * 1000)) {
+                labels.add(new SimpleDateFormat("dd.MM", Locale.getDefault()).format(current.getTime()));
+            } else if (daysCount % 3 == 0) {
+                labels.add(new SimpleDateFormat("dd.MM", Locale.getDefault()).format(current.getTime()));
+            } else {
+                labels.add("");
             }
-        } else {
-            startDate.add(Calendar.DAY_OF_YEAR, -29);
-            startDate.set(Calendar.HOUR_OF_DAY, 0);
-            startDate.set(Calendar.MINUTE, 0);
-            startDate.set(Calendar.SECOND, 0);
 
-            Calendar endDate = Calendar.getInstance();
-            endDate.set(Calendar.HOUR_OF_DAY, 23);
-            endDate.set(Calendar.MINUTE, 59);
-            endDate.set(Calendar.SECOND, 59);
-
-            Calendar current = (Calendar) startDate.clone();
-            SimpleDateFormat apiFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-            SimpleDateFormat displayFormat = new SimpleDateFormat("dd.MM", new Locale("ru"));
-
-            int dayIndex = 0;
-            while (!current.after(endDate)) {
-                String dateStr = apiFormat.format(current.getTime());
-                List<Integer> completions = db.getCompletionsForDate(dateStr);
-                totalCompletions += completions.size();
-
-                List<DatabaseHelper.Habit> habitsForDay = db.getHabitsForDate(dateStr);
-                int habitsCount = habitsForDay.size();
-                int completionsCount = completions.size();
-                int percent = habitsCount > 0 ? (completionsCount * 100) / habitsCount : 0;
-
-                if (dayIndex % 3 == 0 || dayIndex == 29) {
-                    labels.add(displayFormat.format(current.getTime()));
-                } else {
-                    labels.add("");
-                }
-                dayStatsList.add(new DayStats(percent, completionsCount));
-
-                for (DatabaseHelper.Habit habit : habitsForDay) {
-                    String category = habit.getCategory();
-                    if (category == null || category.isEmpty()) category = "Без категории";
-                    categoryCount.put(category, categoryCount.getOrDefault(category, 0) + 1);
-                }
-
-                current.add(Calendar.DAY_OF_YEAR, 1);
-                dayIndex++;
+            for (DatabaseHelper.Habit habit : habitsForDay) {
+                String cat = habit.getCategory();
+                if (cat == null || cat.isEmpty()) cat = "Без категории";
+                categoryCount.put(cat, categoryCount.getOrDefault(cat, 0) + 1);
             }
+
+            current.add(Calendar.DAY_OF_YEAR, 1);
+            daysCount++;
         }
 
         tvTotalHabits.setText(String.valueOf(totalHabits));
         tvTotalCompletions.setText(String.valueOf(totalCompletions));
+        tvStreak.setText(String.valueOf(calculateCurrentStreak()));
 
-        int streak = calculateCurrentStreak();
-        tvStreak.setText(String.valueOf(streak));
-
-        drawLineChart(dayStatsList, labels);
+        drawLineChart(dayStats, labels);
         drawPieChart(categoryCount);
     }
 
     private int calculateCurrentStreak() {
         int streak = 0;
         Calendar calendar = Calendar.getInstance();
-        SimpleDateFormat apiFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-
         for (int i = 0; i < 365; i++) {
             String dateStr = apiFormat.format(calendar.getTime());
             List<Integer> completions = db.getCompletionsForDate(dateStr);
-            boolean hasCompletions = !completions.isEmpty();
-
-            if (hasCompletions) {
+            if (!completions.isEmpty()) {
                 streak++;
             } else {
                 break;
@@ -213,10 +278,10 @@ public class StatsFragment extends Fragment {
         return streak;
     }
 
-    private void drawLineChart(List<DayStats> dayStatsList, List<String> labels) {
+    private void drawLineChart(List<DayStat> dayStats, List<String> labels) {
         List<Entry> entries = new ArrayList<>();
-        for (int i = 0; i < dayStatsList.size(); i++) {
-            entries.add(new Entry(i, dayStatsList.get(i).percent));
+        for (int i = 0; i < dayStats.size(); i++) {
+            entries.add(new Entry(i, dayStats.get(i).percent));
         }
 
         LineDataSet dataSet = new LineDataSet(entries, "Прогресс %");
@@ -225,29 +290,17 @@ public class StatsFragment extends Fragment {
         dataSet.setCircleColor(ContextCompat.getColor(requireContext(), R.color.orange_primary));
         dataSet.setCircleRadius(5f);
         dataSet.setCircleHoleRadius(3f);
+        dataSet.setCircleHoleColor(Color.WHITE);
         dataSet.setValueTextSize(10f);
         dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
-        dataSet.setDrawValues(true);
+        dataSet.setDrawValues(false);
 
         LineData lineData = new LineData(dataSet);
         chartProgress.setData(lineData);
 
-        XAxis xAxis = chartProgress.getXAxis();
-        xAxis.setValueFormatter(new IndexAxisValueFormatter(labels));
-        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-        xAxis.setGranularity(1f);
-        xAxis.setLabelRotationAngle(-45f);
-        xAxis.setTextSize(10f);
-        xAxis.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary));
-
-        chartProgress.getAxisLeft().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary));
-        chartProgress.getAxisRight().setEnabled(false);
-        chartProgress.getDescription().setEnabled(false);
-        chartProgress.setTouchEnabled(true);
-        chartProgress.setDragEnabled(true);
-        chartProgress.setScaleEnabled(true);
-        chartProgress.animateX(1000);
-
+        chartProgress.getXAxis().setValueFormatter(new IndexAxisValueFormatter(labels));
+        chartProgress.getXAxis().setLabelRotationAngle(labels.size() > 15 ? -45f : 0f);
+        chartProgress.animateX(800);
         chartProgress.invalidate();
     }
 
@@ -263,30 +316,36 @@ public class StatsFragment extends Fragment {
             entries.add(new PieEntry(1, "Нет данных"));
         }
 
+        // Монохромный набор (оттенки оранжевого и серого)
+        int[] colors = {
+                ContextCompat.getColor(requireContext(), R.color.orange_primary),   // яркий оранжевый
+                ContextCompat.getColor(requireContext(), R.color.orange_dark),      // тёмный оранжевый
+                0xFFFF8C42,  // средне-оранжевый
+                0xFFE8A070,  // приглушённый оранжевый
+                0xFFC2AC98,  // бежево-оранжевый
+                0xFF9E8E7A,  // серо-оранжевый
+                0xFF7A6B5C,  // тёмно-серый
+                0xFF5C5248,  // ещё темнее
+                0xFF403A35,  // почти чёрный
+                0xFFB0A59C   // светло-серый
+        };
+
         PieDataSet dataSet = new PieDataSet(entries, "Категории");
-        dataSet.setColors(ColorTemplate.MATERIAL_COLORS);
+        dataSet.setColors(colors);
         dataSet.setValueTextSize(12f);
         dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
         dataSet.setSliceSpace(3f);
+        dataSet.setSelectionShift(5f);
 
         PieData pieData = new PieData(dataSet);
         chartCategories.setData(pieData);
-        chartCategories.setUsePercentValues(true);
-        chartCategories.getDescription().setEnabled(false);
-        chartCategories.setEntryLabelTextSize(10f);
-        chartCategories.setDrawEntryLabels(true);
-        chartCategories.animateY(1000);
-
+        chartCategories.animateY(800);
         chartCategories.invalidate();
     }
 
-    private static class DayStats {
+    private static class DayStat {
         int percent;
-        int completions;
-
-        DayStats(int percent, int completions) {
-            this.percent = percent;
-            this.completions = completions;
-        }
+        DayStat(int percent) { this.percent = percent; }
     }
+
 }
