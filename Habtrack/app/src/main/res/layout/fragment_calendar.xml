@@ -133,16 +133,6 @@
 
             </LinearLayout>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Что делал сегодня:"
-                android:textSize="13sp"
-                android:fontFamily="@font/montserrat"
-                android:textColor="@color/text_secondary"
-                android:layout_marginStart="16dp"
-                android:layout_marginBottom="8dp"/>
-
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rv_day_habits"
                 android:layout_width="match_parent"

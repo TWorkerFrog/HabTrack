@@ -180,34 +180,24 @@ public class CalendarFragment extends Fragment {
         endCal.set(Calendar.SECOND, 59);
         endCal.set(Calendar.MILLISECOND, 999);
 
-        List<DatabaseHelper.Habit> allHabits = db.getHabits();
-        if (allHabits == null) allHabits = new ArrayList<>();
-
-        String today = apiFormat.format(new Date());
-
         Calendar dayCal = (Calendar) startCal.clone();
 
         while (dayCal.before(endCal) || dayCal.equals(endCal)) {
             String dateStr = apiFormat.format(dayCal.getTime());
-            long dayTimestamp = dayCal.getTimeInMillis();
 
             List<Integer> completions = db.getCompletionsForDate(dateStr);
             if (completions == null) completions = new ArrayList<>();
 
-            // Для сегодняшнего дня показываем все привычки
-            // Для прошлых дней — только те, что созданы до этого дня
-            List<DatabaseHelper.Habit> habitsForDay = new ArrayList<>();
-            for (DatabaseHelper.Habit habit : allHabits) {
-                if (dateStr.equals(today)) {
-                    // Сегодня — все привычки
-                    habitsForDay.add(habit);
-                } else if (habit.getCreatedAt() <= dayTimestamp) {
-                    // Прошлые дни — только созданные до этого дня
-                    habitsForDay.add(habit);
-                }
-            }
+            // ✅ ИСПРАВЛЕНО: используем getHabitsForDate вместо getAllHabits
+            List<DatabaseHelper.Habit> habitsForDay = db.getHabitsForDate(dateStr);
 
-            int percent = habitsForDay.isEmpty() ? 0 : (completions.size() * 100) / habitsForDay.size();
+            int completionsCount = completions.size();
+            int habitsCount = habitsForDay.size();
+            int percent = 0;
+            if (habitsCount > 0) {
+                percent = (completionsCount * 100) / habitsCount;
+                if (percent > 100) percent = 100;
+            }
             dayProgressMap.put(dateStr, percent);
 
             List<HabitWithStatus> habitList = new ArrayList<>();

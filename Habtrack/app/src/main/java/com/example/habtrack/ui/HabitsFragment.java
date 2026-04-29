@@ -20,6 +20,7 @@ import com.example.habtrack.data.DatabaseHelper;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.lang.reflect.Method;
+import android.util.Log;
 
 public class HabitsFragment extends Fragment {
 
@@ -84,17 +85,24 @@ public class HabitsFragment extends Fragment {
             boolean allChecked = completedToday.size() == habits.size();
 
             if (allChecked) {
-                completedToday.clear();
+                // Снимаем все отметки
                 for (DatabaseHelper.Habit habit : habits) {
-                    db.toggleCompletion(habit.getId(), todayDate);
+                    if (completedToday.contains(habit.getId())) {
+                        db.toggleCompletion(habit.getId(), todayDate);
+                    }
                 }
             } else {
-                completedToday.clear();
+                // Отмечаем все
                 for (DatabaseHelper.Habit habit : habits) {
-                    completedToday.add(habit.getId());
-                    db.toggleCompletion(habit.getId(), todayDate);
+                    if (!completedToday.contains(habit.getId())) {
+                        db.toggleCompletion(habit.getId(), todayDate);
+                    }
                 }
             }
+
+            // Синхронизируем локальный Set с БД
+            syncCompletionsFromDb();
+
             updateProgress();
             updateCheckAllButtonText();
             mainHandler.post(() -> adapter.notifyDataSetChanged());
@@ -105,15 +113,12 @@ public class HabitsFragment extends Fragment {
 
         return view;
     }
-
-    private void loadData() {
-        habits.clear();
-        habits.addAll(db.getHabits());
-
-        completedToday.clear();
+    private void syncCompletionsFromDb() {
         List<Integer> completions = db.getCompletionsForDate(todayDate);
+        completedToday.clear();
         completedToday.addAll(completions);
     }
+
 
     public void refreshData() {
         loadData();
@@ -237,18 +242,43 @@ public class HabitsFragment extends Fragment {
     }
 
     private void showDeleteConfirmDialog(DatabaseHelper.Habit habit) {
+        String currentDate = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+
+        Log.d("DEBUG_UI", "=== Delete dialog ===");
+        Log.d("DEBUG_UI", "Habit: id=" + habit.getId() + ", title=" + habit.getTitle());
+        Log.d("DEBUG_UI", "Current date: " + currentDate);
+
         new AlertDialog.Builder(getContext())
                 .setTitle("Удалить привычку")
-                .setMessage("Вы уверены, что хотите удалить \"" + habit.getTitle() + "\"?")
-                .setPositiveButton("Удалить", (dialog, which) -> {
+                .setMessage("Как удалить \"" + habit.getTitle() + "\"?")
+                .setPositiveButton("Только на сегодня", (dialog, which) -> {
+                    Log.d("DEBUG_UI", "User chose: ONLY TODAY");
+                    db.hideHabitFromDate(habit.getId(), currentDate);
+                    refreshData();
+                    Toast.makeText(getContext(), "Привычка скрыта с сегодняшнего дня", Toast.LENGTH_SHORT).show();
+                })
+                .setNeutralButton("Навсегда", (dialog, which) -> {
+                    Log.d("DEBUG_UI", "User chose: FOREVER");
                     db.deleteHabit(habit.getId());
                     refreshData();
+                    Toast.makeText(getContext(), "Привычка удалена навсегда", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Отмена", null)
                 .show();
     }
 
-    // Адаптер
+    private void loadData() {
+        Log.d("DEBUG_UI", "=== loadData called ===");
+        habits.clear();
+        habits.addAll(db.getAllHabits());
+        Log.d("DEBUG_UI", "Loaded " + habits.size() + " habits");
+
+        completedToday.clear();
+        List<Integer> completions = db.getCompletionsForDate(todayDate);
+        completedToday.addAll(completions);
+        Log.d("DEBUG_UI", "Loaded " + completions.size() + " completions for " + todayDate);
+    }
+
     // Адаптер
     public static class HabitAdapter extends RecyclerView.Adapter<HabitAdapter.ViewHolder> {
         private final List<DatabaseHelper.Habit> habits;
