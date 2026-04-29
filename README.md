@@ -1,9 +1,9 @@
-# HabitTracker
+# HabTrack
 
 [![Android](https://img.shields.io/badge/Android-16%2B-green.svg)](https://developer.android.com)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**HabitTracker** — это мобильное приложение для отслеживания привычек с календарём и статистикой. Помогает формировать полезные привычки через системный учёт и визуализацию прогресса.
+**HabTrack** — это мобильное приложение для отслеживания привычек с календарём и статистикой. Помогает формировать полезные привычки через системный учёт и визуализацию прогресса.
 
 ## Скриншоты
 
