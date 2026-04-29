@@ -452,6 +452,23 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    public void cleanupOrphanedCompletions() {
+        try {
+            SQLiteDatabase db = getWritableDatabase();
+            // Удаляем отметки, у которых нет соответствующей привычки
+            String sql = "DELETE FROM " + TABLE_COMPLETIONS +
+                    " WHERE " + COL_HABIT_REF + " NOT IN (SELECT " + COL_HABIT_ID +
+                    " FROM " + TABLE_HABITS + ")";
+            int deleted = db.compileStatement(sql).executeUpdateDelete();
+            if (deleted > 0) {
+                Log.d(TAG, "cleanupOrphanedCompletions: deleted " + deleted + " orphaned completions");
+                addLog("Очищено " + deleted + " сиротских отметок");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "cleanupOrphanedCompletions: error", e);
+        }
+    }
+
     // ============= ВЫПОЛНЕНИЯ =============
 
     public boolean isCompleted(int habitId, String date) {
@@ -508,11 +525,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         List<Integer> completedIds = new ArrayList<>();
         try {
             SQLiteDatabase db = getReadableDatabase();
-            Cursor cursor = db.query(TABLE_COMPLETIONS,
-                    new String[]{COL_HABIT_REF},
-                    COL_COMPLETION_DATE + " = ?",
-                    new String[]{date},
-                    null, null, null);
+            String sql = "SELECT " + COL_HABIT_REF +
+                    " FROM " + TABLE_COMPLETIONS +
+                    " WHERE " + COL_COMPLETION_DATE + " = ?" +
+                    " AND " + COL_HABIT_REF + " IN (SELECT " + COL_HABIT_ID + " FROM " + TABLE_HABITS + ")";
+
+            Cursor cursor = db.rawQuery(sql, new String[]{date});
 
             while (cursor.moveToNext()) {
                 completedIds.add(cursor.getInt(0));
@@ -635,18 +653,21 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         private String title;
         private String category;
         private long createdAt;
+        private String hiddenFrom;
 
         public Habit(int id, String title, String category, long createdAt) {
             this.id = id;
             this.title = title;
             this.category = category;
             this.createdAt = createdAt;
+            this.hiddenFrom = hiddenFrom;
         }
 
         public int getId() { return id; }
         public String getTitle() { return title; }
         public String getCategory() { return category; }
         public long getCreatedAt() { return createdAt; }
+        public String getHiddenFrom() { return hiddenFrom; }
     }
 
 

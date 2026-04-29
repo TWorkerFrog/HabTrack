@@ -69,7 +69,7 @@
     <!-- BottomSheet - правильная структура -->
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="140dp"
         android:layout_weight="0.6"
         android:background="@android:color/transparent"
         android:layout_marginTop="8dp">

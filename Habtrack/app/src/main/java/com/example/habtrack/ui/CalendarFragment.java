@@ -20,6 +20,7 @@ import com.example.habtrack.data.DatabaseHelper;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import android.util.Log;
 
 public class CalendarFragment extends Fragment {
 
@@ -277,13 +278,52 @@ public class CalendarFragment extends Fragment {
             tvSelectedDate.setText(date);
         }
 
-        progressBar.setProgress(percent);
-        tvProgressPercent.setText(percent + "%");
+        // 🔍 ЛОГИ ДЛЯ ОТЛАДКИ
+        List<Integer> completions = db.getCompletionsForDate(date);
+        List<DatabaseHelper.Habit> habitsForDay = db.getHabitsForDate(date);
 
-        List<HabitWithStatus> habits = dayHabitsMap.get(date);
-        if (habits == null) habits = new ArrayList<>();
+        Log.d("DEBUG_CALENDAR", "=== showDayInfo for " + date + " ===");
+        Log.d("DEBUG_CALENDAR", "Habits for day: " + habitsForDay.size());
+        for (DatabaseHelper.Habit h : habitsForDay) {
+            Log.d("DEBUG_CALENDAR", "  Habit: id=" + h.getId() + ", title=" + h.getTitle() + ", hidden_from=" + h.getHiddenFrom());
+        }
+        Log.d("DEBUG_CALENDAR", "Completions for day: " + completions.size());
+        for (int id : completions) {
+            Log.d("DEBUG_CALENDAR", "  Completion id=" + id);
+        }
 
-        DayHabitsAdapter adapter = new DayHabitsAdapter(habits);
+        // Считаем ВАЛИДНЫЕ отметки (которые есть в habitsForDay)
+        int validCompletionsCount = 0;
+        for (int completionId : completions) {
+            for (DatabaseHelper.Habit habit : habitsForDay) {
+                if (habit.getId() == completionId) {
+                    validCompletionsCount++;
+                    break;
+                }
+            }
+        }
+
+        int habitsCount = habitsForDay.size();
+        int newPercent = 0;
+        if (habitsCount > 0) {
+            newPercent = (validCompletionsCount * 100) / habitsCount;
+            if (newPercent > 100) newPercent = 100;
+        }
+
+        Log.d("DEBUG_CALENDAR", "Valid completions: " + validCompletionsCount);
+        Log.d("DEBUG_CALENDAR", "Calculated percent: " + newPercent + "%");
+
+        progressBar.setProgress(newPercent);
+        tvProgressPercent.setText(newPercent + "%");
+
+        // Обновляем список привычек
+        List<HabitWithStatus> habitList = new ArrayList<>();
+        for (DatabaseHelper.Habit habit : habitsForDay) {
+            boolean isCompleted = completions.contains(habit.getId());
+            habitList.add(new HabitWithStatus(habit.getTitle(), habit.getCategory(), isCompleted));
+        }
+
+        DayHabitsAdapter adapter = new DayHabitsAdapter(habitList);
         rvDayHabits.setAdapter(adapter);
 
         // Раскрываем bottom sheet
@@ -364,6 +404,7 @@ public class CalendarFragment extends Fragment {
         private final List<CalendarDayItem> items;
         private final OnDayClickListener listener;
         private int selectedPosition = -1;
+        private int cellSize = 0;
 
         interface OnDayClickListener {
             void onDayClick(int position, String date, int percent);
@@ -385,11 +426,22 @@ public class CalendarFragment extends Fragment {
         @Override
         public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             TextView tv = new TextView(parent.getContext());
-            tv.setLayoutParams(new ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    dpToPx(parent.getContext(), 56)));
+
+            // Рассчитываем размер ячейки
+            if (cellSize == 0) {
+                int screenWidth = parent.getContext().getResources().getDisplayMetrics().widthPixels;
+                cellSize = screenWidth / 9;
+            }
+
+            // Устанавливаем размер ячейки
+            tv.setLayoutParams(new ViewGroup.LayoutParams(cellSize, cellSize));
             tv.setGravity(Gravity.CENTER);
-            tv.setTextSize(16);
+            tv.setTextSize(14);
+
+            // Маленький внутренний отступ для круга (чтобы не наезжал)
+            int innerPadding = cellSize / 100;
+            tv.setPadding(innerPadding, innerPadding, innerPadding, innerPadding);
+
             return new ViewHolder(tv);
         }
 
@@ -452,10 +504,6 @@ public class CalendarFragment extends Fragment {
                 super(tv);
                 textView = tv;
             }
-        }
-
-        private int dpToPx(android.content.Context context, int dp) {
-            return (int) (dp * context.getResources().getDisplayMetrics().density);
         }
     }
 

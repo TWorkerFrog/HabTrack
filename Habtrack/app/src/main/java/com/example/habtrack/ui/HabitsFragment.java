@@ -21,6 +21,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.lang.reflect.Method;
 import android.util.Log;
+import java.util.stream.Collectors;
 
 public class HabitsFragment extends Fragment {
 
@@ -82,17 +83,28 @@ public class HabitsFragment extends Fragment {
         btnCheckAll.setOnClickListener(v -> {
             if (habits == null || habits.isEmpty()) return;
 
-            boolean allChecked = completedToday.size() == habits.size();
+            // Считаем валидные отметки
+            int validCompletionsCount = 0;
+            for (int id : completedToday) {
+                for (DatabaseHelper.Habit h : habits) {
+                    if (h.getId() == id) {
+                        validCompletionsCount++;
+                        break;
+                    }
+                }
+            }
+
+            boolean allChecked = validCompletionsCount == habits.size();
 
             if (allChecked) {
-                // Снимаем все отметки
+                // Снимаем отметки только с существующих привычек
                 for (DatabaseHelper.Habit habit : habits) {
                     if (completedToday.contains(habit.getId())) {
                         db.toggleCompletion(habit.getId(), todayDate);
                     }
                 }
             } else {
-                // Отмечаем все
+                // Отмечаем все неотмеченные привычки
                 for (DatabaseHelper.Habit habit : habits) {
                     if (!completedToday.contains(habit.getId())) {
                         db.toggleCompletion(habit.getId(), todayDate);
@@ -100,9 +112,8 @@ public class HabitsFragment extends Fragment {
                 }
             }
 
-            // Синхронизируем локальный Set с БД
+            // Синхронизируем
             syncCompletionsFromDb();
-
             updateProgress();
             updateCheckAllButtonText();
             mainHandler.post(() -> adapter.notifyDataSetChanged());
@@ -135,7 +146,12 @@ public class HabitsFragment extends Fragment {
             tvProgressPercent.setText("0%");
             return;
         }
-        int percent = (completedToday.size() * 100) / habits.size();
+
+        // Считаем только те отметки, которые относятся к существующим привычкам
+        Set<Integer> validCompletions = new HashSet<>(completedToday);
+        validCompletions.retainAll(habits.stream().map(h -> h.getId()).collect(Collectors.toSet()));
+
+        int percent = (validCompletions.size() * 100) / habits.size();
         progressBar.setProgress(percent);
         tvProgressPercent.setText(percent + "%");
     }
@@ -145,7 +161,19 @@ public class HabitsFragment extends Fragment {
             btnCheckAll.setText("Отметить все привычки");
             return;
         }
-        if (completedToday.size() == habits.size()) {
+
+        // Считаем ТОЛЬКО валидные отметки (которые есть в habits)
+        int validCompletionsCount = 0;
+        for (int id : completedToday) {
+            for (DatabaseHelper.Habit h : habits) {
+                if (h.getId() == id) {
+                    validCompletionsCount++;
+                    break;
+                }
+            }
+        }
+
+        if (validCompletionsCount == habits.size()) {
             btnCheckAll.setText("Снять все отметки");
         } else {
             btnCheckAll.setText("Отметить все привычки");
@@ -268,15 +296,25 @@ public class HabitsFragment extends Fragment {
     }
 
     private void loadData() {
-        Log.d("DEBUG_UI", "=== loadData called ===");
+        Log.d("DEBUG_PROGRESS", "=== loadData ===");
+
+        // Очищаем сиротские отметки (один раз)
+        db.cleanupOrphanedCompletions();
+
         habits.clear();
         habits.addAll(db.getAllHabits());
-        Log.d("DEBUG_UI", "Loaded " + habits.size() + " habits");
+        Log.d("DEBUG_PROGRESS", "getAllHabits returned " + habits.size() + " habits");
+        for (DatabaseHelper.Habit h : habits) {
+            Log.d("DEBUG_PROGRESS", "  Habit from DB: id=" + h.getId() + ", title=" + h.getTitle());
+        }
 
         completedToday.clear();
         List<Integer> completions = db.getCompletionsForDate(todayDate);
         completedToday.addAll(completions);
-        Log.d("DEBUG_UI", "Loaded " + completions.size() + " completions for " + todayDate);
+        Log.d("DEBUG_PROGRESS", "getCompletionsForDate returned " + completions.size() + " completions for " + todayDate);
+        for (int id : completions) {
+            Log.d("DEBUG_PROGRESS", "  Completion id=" + id);
+        }
     }
 
     // Адаптер
