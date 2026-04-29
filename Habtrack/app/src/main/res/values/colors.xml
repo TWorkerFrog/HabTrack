@@ -16,6 +16,7 @@
     <color name="text_secondary">#6C757D</color>
     <color name="divider">#E9ECEF</color>
     <color name="success">#28A745</color>
+    <color name="error_red">#DC3545</color>
     <color name="background_light">#F8F9FA</color>
     <color name="text_hint">#9E9E9E</color>
 </resources>

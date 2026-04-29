@@ -1,141 +1,128 @@
 package com.example.habtrack.ui;
 
-import android.app.AlertDialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.*;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.habtrack.R;
+import com.example.habtrack.auth.AuthManager;
+import com.example.habtrack.auth.LoginActivity;
 import com.example.habtrack.data.DatabaseHelper;
-import java.lang.reflect.Method;
+import com.example.habtrack.MainActivity;
+
 import java.util.ArrayList;
 import java.util.List;
-import java.lang.reflect.Field;
 
 public class ProfileFragment extends Fragment {
 
+    private DatabaseHelper db;
+    private AuthManager authManager;
     private RecyclerView rvCategories;
-    private Button btnAddCategory;
-    private LinearLayout layoutCategoriesList;
+    private CategoriesAdapter categoriesAdapter;
+    private List<String> categories = new ArrayList<>();
+    private Button btnLogout;
     private LinearLayout layoutCategoriesHeader;
+    private LinearLayout layoutCategoriesList;
     private ImageView ivArrow;
     private TextView tvCategoriesCount;
-    private DatabaseHelper db;
-    private CategoryAdapter adapter;
-    private List<String> categories = new ArrayList<>();
-    private boolean isExpanded = false;
+    private boolean isCategoriesExpanded = false;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_profile, container, false);
 
         db = DatabaseHelper.getInstance(getContext());
+        authManager = new AuthManager(getContext());
 
+        // Инициализация views
         rvCategories = view.findViewById(R.id.rv_categories);
-        btnAddCategory = view.findViewById(R.id.btn_add_category);
-        layoutCategoriesList = view.findViewById(R.id.layout_categories_list);
+        btnLogout = view.findViewById(R.id.btn_logout);
         layoutCategoriesHeader = view.findViewById(R.id.layout_categories_header);
+        layoutCategoriesList = view.findViewById(R.id.layout_categories_list);
         ivArrow = view.findViewById(R.id.iv_arrow);
         tvCategoriesCount = view.findViewById(R.id.tv_categories_count);
 
+        // Настройка RecyclerView для категорий
         rvCategories.setLayoutManager(new LinearLayoutManager(getContext()));
-
         loadCategories();
 
+        categoriesAdapter = new CategoriesAdapter(categories, new CategoriesAdapter.Callbacks() {
+            @Override
+            public void onEdit(String category, int position) {
+                showEditCategoryDialog(category, position);
+            }
+
+            @Override
+            public void onDelete(String category, int position) {
+                showDeleteCategoryDialog(category, position);
+            }
+        });
+        rvCategories.setAdapter(categoriesAdapter);
+
+        // Обработчик заголовка категорий (раскрытие/скрытие)
         layoutCategoriesHeader.setOnClickListener(v -> toggleCategoriesList());
 
+        // Кнопка выхода
+        btnLogout.setOnClickListener(v -> {
+            new AlertDialog.Builder(getContext())
+                    .setTitle("Выход")
+                    .setMessage("Вы уверены, что хотите выйти?")
+                    .setPositiveButton("Выйти", (dialog, which) -> {
+                        authManager.logout();
+                        Intent intent = new Intent(getContext(), LoginActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
+                        requireActivity().finish();
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
+        });
+
+        // Кнопка добавления категории
+        Button btnAddCategory = view.findViewById(R.id.btn_add_category);
         btnAddCategory.setOnClickListener(v -> showAddCategoryDialog());
 
         return view;
     }
 
     private void toggleCategoriesList() {
-        if (isExpanded) {
+        if (isCategoriesExpanded) {
             layoutCategoriesList.setVisibility(View.GONE);
             ivArrow.setImageResource(R.drawable.ic_chevron_right);
         } else {
             layoutCategoriesList.setVisibility(View.VISIBLE);
             ivArrow.setImageResource(R.drawable.ic_chevron_down);
+            // Обновляем список при раскрытии
+            loadCategories();
+            categoriesAdapter.notifyDataSetChanged();
         }
-        isExpanded = !isExpanded;
+        isCategoriesExpanded = !isCategoriesExpanded;
     }
 
     private void loadCategories() {
         categories.clear();
-        List<String> allCategories = db.getUserCategories();
-        for (String cat : allCategories) {
+        List<String> userCategories = db.getUserCategories();
+        // Убираем "Без категории" из списка редактируемых
+        for (String cat : userCategories) {
             if (!cat.equals("Без категории")) {
                 categories.add(cat);
             }
         }
         tvCategoriesCount.setText(String.valueOf(categories.size()));
-        adapter = new CategoryAdapter(categories, new CategoryAdapter.Callbacks() {
-            @Override
-            public void onEdit(String category, int position) {
-                showEditCategoryDialog(category, position);
-            }
-            @Override
-            public void onDelete(String category, int position) {
-                showDeleteCategoryDialog(category, position);
-            }
-        });
-        rvCategories.setAdapter(adapter);
-    }
-
-    private void showEditCategoryDialog(String oldCategory, int position) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        View view = getLayoutInflater().inflate(R.layout.dialog_edit_category, null);
-        builder.setView(view);
-
-        EditText etName = view.findViewById(R.id.dialog_et_category);
-        Button btnSave = view.findViewById(R.id.dialog_btn_save);
-
-        etName.setText(oldCategory);
-        etName.setSelection(oldCategory.length());
-
-        AlertDialog dialog = builder.create();
-
-        btnSave.setOnClickListener(v -> {
-            String newCategory = etName.getText().toString().trim();
-            if (newCategory.isEmpty()) {
-                etName.setError("Введите название");
-                return;
-            }
-            if (newCategory.equals(oldCategory)) {
-                dialog.dismiss();
-                return;
-            }
-            if (categories.contains(newCategory)) {
-                etName.setError("Такая категория уже есть");
-                return;
-            }
-
-            db.updateCategory(oldCategory, newCategory);
-            loadCategories();
-            dialog.dismiss();
-            Toast.makeText(getContext(), "Категория переименована", Toast.LENGTH_SHORT).show();
-        });
-
-        dialog.show();
-    }
-
-    private void showDeleteCategoryDialog(String category, int position) {
-        new AlertDialog.Builder(getContext())
-                .setTitle("Удалить категорию")
-                .setMessage("Вы уверены, что хотите удалить категорию \"" + category + "\"?")
-                .setPositiveButton("Удалить", (dialog, which) -> {
-                    db.deleteCategory(category);
-                    loadCategories();
-                    Toast.makeText(getContext(), "Категория удалена", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Отмена", null)
-                .show();
     }
 
     private void showAddCategoryDialog() {
@@ -153,9 +140,7 @@ public class ProfileFragment extends Fragment {
             if (!newCategory.isEmpty() && !categories.contains(newCategory)) {
                 db.addCategory(newCategory);
                 loadCategories();
-                if (!isExpanded) {
-                    toggleCategoriesList();
-                }
+                categoriesAdapter.notifyDataSetChanged();
                 dialog.dismiss();
                 Toast.makeText(getContext(), "Категория добавлена", Toast.LENGTH_SHORT).show();
             } else if (newCategory.isEmpty()) {
@@ -168,8 +153,53 @@ public class ProfileFragment extends Fragment {
         dialog.show();
     }
 
+    private void showEditCategoryDialog(String oldName, int position) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        View view = getLayoutInflater().inflate(R.layout.dialog_edit_category, null);
+        builder.setView(view);
+
+        EditText etCategory = view.findViewById(R.id.dialog_et_category);
+        Button btnSave = view.findViewById(R.id.dialog_btn_save);
+
+        etCategory.setText(oldName);
+        etCategory.setSelection(oldName.length());
+
+        AlertDialog dialog = builder.create();
+
+        btnSave.setOnClickListener(v -> {
+            String newName = etCategory.getText().toString().trim();
+            if (!newName.isEmpty() && !newName.equals(oldName)) {
+                db.updateCategory(oldName, newName);
+                loadCategories();
+                categoriesAdapter.notifyItemChanged(position);
+                dialog.dismiss();
+                Toast.makeText(getContext(), "Категория переименована", Toast.LENGTH_SHORT).show();
+            } else if (newName.isEmpty()) {
+                etCategory.setError("Введите название");
+            } else {
+                dialog.dismiss();
+            }
+        });
+
+        dialog.show();
+    }
+
+    private void showDeleteCategoryDialog(String category, int position) {
+        new AlertDialog.Builder(getContext())
+                .setTitle("Удалить категорию")
+                .setMessage("Удалить категорию \"" + category + "\"?\nПривычки с этой категорией будут перемещены в 'Без категории'.")
+                .setPositiveButton("Удалить", (dialog, which) -> {
+                    db.deleteCategory(category);
+                    loadCategories();
+                    categoriesAdapter.notifyItemRemoved(position);
+                    Toast.makeText(getContext(), "Категория удалена", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
     // Адаптер для категорий
-    static class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.ViewHolder> {
+    static class CategoriesAdapter extends RecyclerView.Adapter<CategoriesAdapter.ViewHolder> {
         private final List<String> categories;
         private final Callbacks callbacks;
 
@@ -178,7 +208,7 @@ public class ProfileFragment extends Fragment {
             void onDelete(String category, int position);
         }
 
-        CategoryAdapter(List<String> categories, Callbacks callbacks) {
+        CategoriesAdapter(List<String> categories, Callbacks callbacks) {
             this.categories = categories;
             this.callbacks = callbacks;
         }
@@ -193,41 +223,20 @@ public class ProfileFragment extends Fragment {
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             String category = categories.get(position);
-            holder.tvName.setText(category);
+            holder.tvCategoryName.setText(category);
 
             holder.btnMenu.setOnClickListener(v -> {
-                // Используем wrapper с твоей темой
-                android.content.Context wrapper = new android.view.ContextThemeWrapper(
-                        v.getContext(),
-                        R.style.MyPopupMenuTheme
-                );
-
-                PopupMenu popupMenu = new PopupMenu(wrapper, holder.btnMenu);
+                // Используем существующий habit_menu.xml
+                PopupMenu popupMenu = new PopupMenu(v.getContext(), holder.btnMenu);
                 popupMenu.inflate(R.menu.habit_menu);
-
-                try {
-                    java.lang.reflect.Field field = popupMenu.getClass().getDeclaredField("mPopup");
-                    field.setAccessible(true);
-                    Object menuPopupHelper = field.get(popupMenu);
-                    Class<?> classPopupHelper = Class.forName(menuPopupHelper.getClass().getName());
-                    Method setForceShowIcon = classPopupHelper.getMethod("setForceShowIcon", boolean.class);
-                    setForceShowIcon.invoke(menuPopupHelper, true);
-
-                    // Устанавливаем фон
-                    Method setBackgroundDrawable = classPopupHelper.getMethod("setBackgroundDrawable", android.graphics.drawable.Drawable.class);
-                    android.graphics.drawable.Drawable drawable = v.getContext().getResources().getDrawable(R.drawable.popup_menu_background);
-                    setBackgroundDrawable.invoke(menuPopupHelper, drawable);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
 
                 popupMenu.setOnMenuItemClickListener(item -> {
                     int itemId = item.getItemId();
                     if (itemId == R.id.menu_edit) {
-                        if (callbacks != null) callbacks.onEdit(category, position);
+                        callbacks.onEdit(category, position);
                         return true;
                     } else if (itemId == R.id.menu_delete) {
-                        if (callbacks != null) callbacks.onDelete(category, position);
+                        callbacks.onDelete(category, position);
                         return true;
                     }
                     return false;
@@ -242,12 +251,12 @@ public class ProfileFragment extends Fragment {
         }
 
         static class ViewHolder extends RecyclerView.ViewHolder {
-            TextView tvName;
+            TextView tvCategoryName;
             ImageButton btnMenu;
 
             ViewHolder(@NonNull View itemView) {
                 super(itemView);
-                tvName = itemView.findViewById(R.id.tv_category_name);
+                tvCategoryName = itemView.findViewById(R.id.tv_category_name);
                 btnMenu = itemView.findViewById(R.id.btn_category_menu);
             }
         }

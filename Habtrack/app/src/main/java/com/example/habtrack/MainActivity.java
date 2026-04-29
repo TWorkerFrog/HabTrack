@@ -20,6 +20,9 @@ import com.example.habtrack.ui.ProfileFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import java.util.ArrayList;
 import java.util.List;
+import com.example.habtrack.auth.AuthManager;
+import com.example.habtrack.auth.LoginActivity;
+import android.content.Intent;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -32,6 +35,15 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+
+
+        AuthManager authManager = new AuthManager(this);
+        if (!authManager.isLoggedIn()) {
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+            return;
+        }
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);

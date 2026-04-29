@@ -13,15 +13,30 @@
         android:theme="@style/Theme.HabTrack"
         tools:targetApi="31">
 
+        <!-- Экран входа (LAUNCHER) -->
         <activity
-            android:name=".MainActivity"
+            android:name=".auth.LoginActivity"
             android:exported="true"
-            android:theme="@style/Theme.HabTrack">
+            android:theme="@style/Theme.HabTrack"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Экран регистрации -->
+        <activity
+            android:name=".auth.RegisterActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HabTrack"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Главный экран -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HabTrack" />
 
     </application>
 

@@ -257,12 +257,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public int getCurrentUserId() {
+        // Теперь этот метод должен использоваться только после авторизации
+        // ID будет храниться в AuthManager, но для совместимости пока оставим
         try {
             SQLiteDatabase db = getReadableDatabase();
             Cursor cursor = db.query(TABLE_USERS, new String[]{COL_USER_ID},
                     null, null, null, null, null, "1");
 
-            int id = 1;
+            int id = -1;
             if (cursor.moveToFirst()) {
                 id = cursor.getInt(0);
             }
@@ -270,7 +272,28 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             return id;
         } catch (Exception e) {
             Log.e(TAG, "getCurrentUserId: error", e);
-            return 1;
+            return -1;
+        }
+    }
+
+    public int getUserIdByUsername(String username) {
+        try {
+            SQLiteDatabase db = getReadableDatabase();
+            Cursor cursor = db.query(TABLE_USERS,
+                    new String[]{COL_USER_ID},
+                    COL_USERNAME + " = ?",
+                    new String[]{username},
+                    null, null, null);
+
+            int id = -1;
+            if (cursor.moveToFirst()) {
+                id = cursor.getInt(0);
+            }
+            cursor.close();
+            return id;
+        } catch (Exception e) {
+            Log.e(TAG, "getUserIdByUsername: error", e);
+            return -1;
         }
     }
 

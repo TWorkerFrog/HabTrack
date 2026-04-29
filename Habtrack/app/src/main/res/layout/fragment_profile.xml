@@ -79,5 +79,22 @@
             app:cornerRadius="12dp"/>
 
     </LinearLayout>
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider"
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="20dp"/>
 
+    <Button
+        android:id="@+id/btn_logout"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Выйти из аккаунта"
+        android:textSize="14sp"
+        android:fontFamily="@font/montserrat_bold"
+        android:background="@drawable/bg_button_secondary"
+        android:textColor="@color/white"
+        android:backgroundTint="@color/white"
+        android:stateListAnimator="@null"/>
 </LinearLayout>
