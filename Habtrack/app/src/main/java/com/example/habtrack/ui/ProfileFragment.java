@@ -137,7 +137,7 @@ public class ProfileFragment extends Fragment {
         int userId = authManager.getCurrentUserId();
         int totalHabits = db.getTotalHabitsCount(userId);
         int totalCompletions = db.getTotalCompletionsCount(userId);
-        tvTotalStats.setText(totalHabits + " привычек, " + totalCompletions + " выполнено");
+        tvTotalStats.setText(totalHabits + " привычки, " + totalCompletions + " отмечено за всё время");
     }
 
     // Получение имени пользователя по ID

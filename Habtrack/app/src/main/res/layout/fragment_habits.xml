@@ -43,7 +43,52 @@
             android:textColor="@color/orange_primary"
             android:layout_marginStart="12dp"/>
     </LinearLayout>
+    <!-- Плашка ударной серии -->
+    <LinearLayout
+        android:id="@+id/layout_streak"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_streak"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp"
+        android:visibility="gone">
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔥"
+            android:textSize="28sp"/>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="12dp">
+
+            <TextView
+                android:id="@+id/tv_streak_days"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 дней"
+                android:textSize="16sp"
+                android:fontFamily="@font/montserrat_bold"
+                android:textColor="@color/orange_primary"/>
+
+            <TextView
+                android:id="@+id/tv_streak_message"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Продолжай в том же духе!"
+                android:textSize="12sp"
+                android:fontFamily="@font/montserrat"
+                android:textColor="@color/text_secondary"/>
+
+        </LinearLayout>
+
+    </LinearLayout>
     <!-- Кнопка "Отметить всё" - красивая -->
     <Button
         android:id="@+id/btn_check_all"

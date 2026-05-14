@@ -9,6 +9,7 @@ import android.util.Log;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -17,7 +18,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String TAG = "DatabaseHelper";
     private static final String DATABASE_NAME = "habits.db";
-    private static final int DATABASE_VERSION = 8;
+    private static final int DATABASE_VERSION = 9;
 
     // Таблица пользователей
     private static final String TABLE_USERS = "users";
@@ -54,6 +55,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COL_CATEGORY_NAME = "name";
 
     private static DatabaseHelper instance;
+    private static final String COL_CREATED_AT_USER = "created_at";
 
     public static synchronized DatabaseHelper getInstance(Context context) {
         if (instance == null) {
@@ -72,7 +74,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         String createUsers = "CREATE TABLE " + TABLE_USERS + " (" +
                 COL_USER_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 COL_USERNAME + " TEXT UNIQUE NOT NULL, " +
-                COL_PASSWORD + " TEXT NOT NULL)";
+                COL_PASSWORD + " TEXT NOT NULL, " +
+                COL_CREATED_AT_USER + " INTEGER DEFAULT 0)";
         db.execSQL(createUsers);
 
         // Таблица категорий
@@ -127,10 +130,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     private void insertTestData(SQLiteDatabase db) {
         String testDate = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+        long joinDate;
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
+            joinDate = sdf.parse("09.05.2026").getTime();
+        } catch (Exception e) {
+            joinDate = System.currentTimeMillis();
+        }
 
         ContentValues userValues = new ContentValues();
         userValues.put(COL_USERNAME, "user");
         userValues.put(COL_PASSWORD, "123");
+        userValues.put(COL_CREATED_AT_USER, joinDate);
         long userId = db.insert(TABLE_USERS, null, userValues);
 
         if (userId == -1) return;
@@ -210,6 +221,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             ContentValues values = new ContentValues();
             values.put(COL_USERNAME, username);
             values.put(COL_PASSWORD, password);
+            values.put(COL_CREATED_AT_USER, System.currentTimeMillis());
             long result = db.insert(TABLE_USERS, null, values);
             if (result != -1) {
                 addLog("Новый пользователь зарегистрирован: " + username);
@@ -428,8 +440,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 " WHERE " + COL_COMPLETION_DATE + " = ?" +
                 " AND " + COL_HABIT_REF + " IN (SELECT " + COL_HABIT_ID + " FROM " + TABLE_HABITS + ")";
         Cursor cursor = db.rawQuery(sql, new String[]{date});
+        Log.d("STREAK_DEBUG", "getCompletionsForDate(" + date + ") returned " + cursor.getCount() + " rows");
         while (cursor.moveToNext()) {
             completedIds.add(cursor.getInt(0));
+            Log.d("STREAK_DEBUG", "  completion id=" + cursor.getInt(0));
         }
         cursor.close();
         return completedIds;
@@ -502,8 +516,20 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     //  Управление аккаунтом 
 
     public String getUserJoinDate(int userId) {
-        SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
-        return sdf.format(new Date());
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query(TABLE_USERS, new String[]{COL_CREATED_AT_USER},
+                COL_USER_ID + " = ?", new String[]{String.valueOf(userId)}, null, null, null);
+
+        String result = "30.05.2026";
+        if (cursor.moveToFirst()) {
+            long timestamp = cursor.getLong(0);
+            if (timestamp > 0) {
+                SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
+                result = sdf.format(new Date(timestamp));
+            }
+        }
+        cursor.close();
+        return result;
     }
 
     public int getTotalHabitsCount(int userId) {
@@ -591,5 +617,84 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         public String getCategory() { return category; }
         public long getCreatedAt() { return createdAt; }
         public String getHiddenFrom() { return hiddenFrom; }
+    }
+
+    public int calculateStreak(int userId) {
+        int streak = 0;
+        Calendar calendar = Calendar.getInstance();
+        SimpleDateFormat apiFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        SQLiteDatabase db = getReadableDatabase();
+
+        // Получаем самую раннюю дату создания привычки
+        String minDateSql = "SELECT MIN(" + COL_CREATED_DATE + ") FROM " + TABLE_HABITS +
+                " WHERE " + COL_USER_REF + " = ?";
+        Cursor minCursor = db.rawQuery(minDateSql, new String[]{String.valueOf(userId)});
+        String earliestDate = null;
+        if (minCursor.moveToFirst() && minCursor.getString(0) != null) {
+            earliestDate = minCursor.getString(0);
+        }
+        minCursor.close();
+
+        Log.d("STREAK", "Earliest date: " + earliestDate);
+
+        // Максимум 365 дней
+        for (int i = 0; i < 365; i++) {
+            String dateStr = apiFormat.format(calendar.getTime());
+
+            // Если дошли до даты раньше самой ранней привычки — останавливаемся
+            if (earliestDate != null && dateStr.compareTo(earliestDate) < 0) {
+                Log.d("STREAK", "Date " + dateStr + " is before earliest habit, stopping");
+                break;
+            }
+
+            Log.d("STREAK", "Checking: " + dateStr);
+
+            // Получаем привычки за этот день
+            String habitSql = "SELECT COUNT(*) FROM " + TABLE_HABITS +
+                    " WHERE " + COL_USER_REF + " = ?" +
+                    " AND (" + COL_HIDDEN_FROM + " = '' OR " + COL_HIDDEN_FROM + " > ?)" +
+                    " AND " + COL_CREATED_DATE + " <= ?";
+            Cursor habitCursor = db.rawQuery(habitSql, new String[]{String.valueOf(userId), dateStr, dateStr});
+            int habitsCount = 0;
+            if (habitCursor.moveToFirst()) {
+                habitsCount = habitCursor.getInt(0);
+            }
+            habitCursor.close();
+
+            Log.d("STREAK", "Habits: " + habitsCount);
+
+            if (habitsCount == 0) {
+                calendar.add(Calendar.DAY_OF_YEAR, -1);
+                continue;
+            }
+
+            // Получаем отметки
+            String completionSql = "SELECT COUNT(*) FROM " + TABLE_COMPLETIONS + " c" +
+                    " WHERE c." + COL_COMPLETION_DATE + " = ?" +
+                    " AND c." + COL_HABIT_REF + " IN (SELECT " + COL_HABIT_ID + " FROM " + TABLE_HABITS +
+                    " WHERE " + COL_USER_REF + " = ?" +
+                    " AND (" + COL_HIDDEN_FROM + " = '' OR " + COL_HIDDEN_FROM + " > ?)" +
+                    " AND " + COL_CREATED_DATE + " <= ?)";
+            Cursor completionCursor = db.rawQuery(completionSql, new String[]{dateStr, String.valueOf(userId), dateStr, dateStr});
+            int completionsCount = 0;
+            if (completionCursor.moveToFirst()) {
+                completionsCount = completionCursor.getInt(0);
+            }
+            completionCursor.close();
+
+            Log.d("STREAK", "Completions: " + completionsCount);
+
+            if (completionsCount == habitsCount) {
+                streak++;
+                Log.d("STREAK", "Streak: " + streak);
+                calendar.add(Calendar.DAY_OF_YEAR, -1);
+            } else {
+                Log.d("STREAK", "Break at " + dateStr);
+                break;
+            }
+        }
+
+        Log.d("STREAK", "Final streak = " + streak);
+        return streak;
     }
 }

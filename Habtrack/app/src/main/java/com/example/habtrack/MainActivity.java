@@ -23,6 +23,14 @@ import java.util.List;
 import com.example.habtrack.auth.AuthManager;
 import com.example.habtrack.auth.LoginActivity;
 import android.content.Intent;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.Intent;
+import java.util.Calendar;
+import com.example.habtrack.services.ReminderService;
+import android.Manifest;
+import android.os.Build;
+import androidx.core.app.ActivityCompat;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -35,6 +43,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 100);
+        }
 
         // Проверка авторизации
         AuthManager authManager = new AuthManager(this);
@@ -43,6 +54,8 @@ public class MainActivity extends AppCompatActivity {
             finish();
             return;
         }
+
+
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -86,6 +99,8 @@ public class MainActivity extends AppCompatActivity {
             invalidateOptionsMenu();
             return true;
         });
+
+        scheduleDailyReminder();
     }
 
     // Загрузка категорий из базы данных
@@ -247,5 +262,29 @@ public class MainActivity extends AppCompatActivity {
         });
 
         dialog.show();
+    }
+    private void scheduleDailyReminder() {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
+        Intent intent = new Intent(this, ReminderService.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                this, 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.HOUR_OF_DAY, 20);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+
+        if (calendar.getTimeInMillis() < System.currentTimeMillis()) {
+            calendar.add(Calendar.DAY_OF_YEAR, 1);
+        }
+
+        alarmManager.setInexactRepeating(
+                AlarmManager.RTC_WAKEUP,
+                calendar.getTimeInMillis(),
+                AlarmManager.INTERVAL_DAY,
+                pendingIntent
+        );
     }
 }

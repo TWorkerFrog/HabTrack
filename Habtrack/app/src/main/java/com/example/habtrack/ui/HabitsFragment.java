@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,6 +23,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.lang.reflect.Method;
 import java.util.stream.Collectors;
+import com.example.habtrack.auth.AuthManager;
 
 public class HabitsFragment extends Fragment {
 
@@ -35,9 +37,14 @@ public class HabitsFragment extends Fragment {
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private DatabaseHelper db;
     private String todayDate;
+    private LinearLayout layoutStreak;
+    private TextView tvStreakDays;
+    private TextView tvStreakMessage;
+
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        Log.d("STREAK_DEBUG", "todayDate = " + todayDate);
         View view = inflater.inflate(R.layout.fragment_habits, container, false);
 
         db = DatabaseHelper.getInstance(getContext());
@@ -49,8 +56,12 @@ public class HabitsFragment extends Fragment {
         progressBar = view.findViewById(R.id.progress_bar);
         tvProgressPercent = view.findViewById(R.id.tv_progress_percent);
         btnCheckAll = view.findViewById(R.id.btn_check_all);
+        layoutStreak = view.findViewById(R.id.layout_streak);
+        tvStreakDays = view.findViewById(R.id.tv_streak_days);
+        tvStreakMessage = view.findViewById(R.id.tv_streak_message);
 
         loadData();
+
 
         adapter = new HabitAdapter(habits, completedToday,
                 new HabitAdapter.Callbacks() {
@@ -62,6 +73,7 @@ public class HabitsFragment extends Fragment {
                             completedToday.add(habit.getId());
                         }
                         db.toggleCompletion(habit.getId(), todayDate);
+                        new Handler(Looper.getMainLooper()).postDelayed(() -> updateStreakDisplay(), 200);
                         updateProgress();
                         updateCheckAllButtonText();
                         mainHandler.post(() -> adapter.notifyDataSetChanged());
@@ -155,18 +167,23 @@ public class HabitsFragment extends Fragment {
         List<Integer> completions = db.getCompletionsForDate(todayDate);
         completedToday.clear();
         completedToday.addAll(completions);
+        new Handler(Looper.getMainLooper()).postDelayed(() -> updateStreakDisplay(), 200);
     }
 
     public void refreshData() {
         loadData();
+
         mainHandler.post(() -> {
             adapter.notifyDataSetChanged();
             updateProgress();
             updateCheckAllButtonText();
+            updateStreakDisplay();
         });
     }
 
     private void updateProgress() {
+        Log.d("STREAK_DEBUG", "updateProgress: completedToday.size() = " + completedToday.size());
+        Log.d("STREAK_DEBUG", "completedToday = " + completedToday.toString());
         if (habits == null || habits.isEmpty()) {
             progressBar.setProgress(0);
             tvProgressPercent.setText("0%");
@@ -421,4 +438,56 @@ public class HabitsFragment extends Fragment {
     public void refreshCategories() {
         // Заглушка для обновления категорий из MainActivity
     }
+
+
+    private long lastStreakUpdate = 0;
+    private static final long STREAK_UPDATE_DELAY = 3000; // 3 секунды
+
+    private void updateStreakDisplay() {
+        if (layoutStreak == null) return;
+
+        // Если сегодня нет привычек — не показываем
+        if (habits == null || habits.isEmpty()) {
+            layoutStreak.setVisibility(View.GONE);
+            return;
+        }
+
+        new Thread(() -> {
+            int userId = new AuthManager(requireContext()).getCurrentUserId();
+            int streak = db.calculateStreak(userId);
+
+            requireActivity().runOnUiThread(() -> {
+                if (streak > 0) {
+                    layoutStreak.setVisibility(View.VISIBLE);
+                    tvStreakDays.setText(streak + " " + getDaysString(streak));
+                    if (streak >= 30) {
+                        tvStreakMessage.setText("Ты 🔥 легенда! Так держать!");
+                    } else if (streak >= 14) {
+                        tvStreakMessage.setText("2 недели — это мощно! Не останавливайся!");
+                    } else if (streak >= 7) {
+                        tvStreakMessage.setText("Целая неделя! Ты крут!");
+                    } else if (streak >= 3) {
+                        tvStreakMessage.setText("Отличная серия! Продолжай!");
+                    } else {
+                        tvStreakMessage.setText("Уже " + streak + " " + getDaysString(streak) + "! Так держать!");
+                    }
+                } else {
+                    layoutStreak.setVisibility(View.GONE);
+                }
+            });
+        }).start();
+    }
+
+    private String getDaysString(int days) {
+        if (days % 10 == 1 && days % 100 != 11) return "день";
+        if (days % 10 >= 2 && days % 10 <= 4 && (days % 100 < 10 || days % 100 >= 20)) return "дня";
+        return "дней";
+    }
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Задержка, чтобы БД успела обновиться
+        new Handler(Looper.getMainLooper()).postDelayed(() -> updateStreakDisplay(), 50);
+    }
+
 }
